@@ -26,6 +26,7 @@ numpy>=1.25
 scipy>=1.11
 sounddevice>=0.4.8
 pydub>=0.25.1
+audioop-lts>=0.2.2  # Reemplazo de audioop para Python 3.13+
 
 # M4r1l1
 python-dotenv
