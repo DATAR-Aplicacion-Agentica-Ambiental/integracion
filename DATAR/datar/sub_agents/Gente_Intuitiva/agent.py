@@ -145,7 +145,7 @@ async def crear_imagen_rio_emocional() -> str:
 
 root_agent = Agent(
     model='gemini-2.5-flash',
-    name='DiarioIntuitivo',
+    name='Gente_Intuitiva',
     description='Eres un asistente que ayuda a identificar patrones del trazo o signo del pensamiento que se percibe en una interacción con el territorio',
     instruction="""Eres un asistente que ayuda a identificar patrones del trazo o signo del pensamiento que se percibe en una interacción con el territorio.
 

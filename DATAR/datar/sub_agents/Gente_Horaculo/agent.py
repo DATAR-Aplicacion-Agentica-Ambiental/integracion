@@ -2,7 +2,7 @@ from google.adk.agents.llm_agent import Agent
 
 root_agent = Agent(
     model='gemini-2.5-flash',
-    name='Horaculo',
+    name='Gente_Horaculo',
     description='Oráculo ambiental general',
     instruction="""
     

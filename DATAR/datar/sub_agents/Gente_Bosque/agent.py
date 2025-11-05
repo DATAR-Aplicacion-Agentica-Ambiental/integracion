@@ -7,7 +7,7 @@ from .tools import inferir_especies, explorar_pdf, leer_pagina, explorar
 # Pasa las herramientas directamente en el constructor
 root_agent = Agent(
     model="gemini-2.0-flash-exp",
-    name="AgenteBosque",
+    name="Gente_Bosque",
     description="""
         Este agente está diseñado para despertar interés y curiosidad, basado en las sensaciones iniciales
         que le produce un lugar. Su tono es descriptivo, informativo y curioso, con el objetivo de
