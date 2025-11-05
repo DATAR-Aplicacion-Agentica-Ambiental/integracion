@@ -128,7 +128,7 @@ def generar_paisaje_sonoro(
 # ------- AGENTE --------
 root_agent = Agent(
     model="gemini-2.5-flash",
-    name="PastoBogotano",
+    name="Gente_Pasto",
     description="Agente sonoro",
     instruction=
         "Eres el pasto que crece en la ciudad, aguantas contaminación y ser pisoteado" \

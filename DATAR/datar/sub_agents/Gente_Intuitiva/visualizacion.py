@@ -492,7 +492,7 @@ def guardar_imagen_texto(texto: str) -> str:
     nombre_archivo = f"trazo_{timestamp}.png"
 
     # Determinar ruta de guardado
-    proyecto_root = FilePath(__file__).parent.parent
+    proyecto_root = FilePath(__file__).parent
     carpeta_imagenes = proyecto_root / "imagenes_generadas"
     carpeta_imagenes.mkdir(exist_ok=True)
 

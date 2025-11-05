@@ -1,13 +1,13 @@
 import os
 from google.adk.agents.llm_agent import Agent
 from google.adk.models.lite_llm import LiteLlm
-from .sub_agents import Gente_Montaña
-from .sub_agents.agentHierba.agent import root_agent as PastoBogotano
-from .sub_agents.datar_a_gente.agent import root_agent as DiarioIntuitivo
-from .sub_agents.GuatilaM.agent import root_agent as SequentialPipelineAgent
-from .sub_agents.LinaPuerto.agent import root_agent as AgenteBosque
-from .sub_agents.Sebastian1022.agent import root_agent as AgenteSonoro
-from .sub_agents.ZolsemiYa.agent import root_agent as Horaculo
+from .sub_agents.Gente_Montaña.agent import root_agent as Gente_Montaña
+from .sub_agents.Gente_Pasto.agent import root_agent as Gente_Pasto
+from .sub_agents.Gente_Intuitiva.agent import root_agent as Gente_Intuitiva
+from .sub_agents.Gente_Normal.agent import root_agent as SequentialPipelineAgent
+from .sub_agents.Gente_Bosque.agent import root_agent as Gente_Bosque
+from .sub_agents.Gente_Sonora.agent import root_agent as Gente_Sonora
+from .sub_agents.Gente_Horaculo.agent import root_agent as Gente_Horaculo
 
 root_agent = Agent(
     model=LiteLlm(
@@ -20,11 +20,11 @@ root_agent = Agent(
     instruction='Reflexiona y responde preguntas de manera clara y concisa siempre haciendo una primera pregunta sobre La Estructura Ecológica Principal de Bogotá.',
     sub_agents=[
         Gente_Montaña,
-        PastoBogotano,
-        DiarioIntuitivo,
+        Gente_Pasto,
+        Gente_Intuitiva,
         SequentialPipelineAgent,
-        AgenteBosque,
-        AgenteSonoro,
-        Horaculo
+        Gente_Bosque,
+        Gente_Sonora,
+        Gente_Horaculo
     ],
 )
