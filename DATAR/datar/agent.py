@@ -16,8 +16,8 @@ root_agent = Agent(
         api_base="https://openrouter.ai/api/v1"   # URL base de OpenRouter
     ),
     name='root_agent',
-    description='Agente raíz DATAR - Estructura Ecológica Principal de Bogotá',
-    instruction='Reflexiona y responde preguntas de manera clara y concisa siempre haciendo una primera pregunta sobre La Estructura Ecológica Principal de Bogotá.',
+    description='Agente raíz DATAR',
+    instruction='Ayuda con la prueba de los sub-agentes disponibles en esta versión de DATAR.',
     sub_agents=[
         Gente_Montaña,
         Gente_Pasto,
