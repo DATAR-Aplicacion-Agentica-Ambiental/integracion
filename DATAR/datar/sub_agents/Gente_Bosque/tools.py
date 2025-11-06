@@ -116,50 +116,66 @@ def inferir_especies(descripcion: str) -> str:
 
     # Análisis de condiciones
     condiciones = {
-        "humedo": ("humedad" in desc_lower or "mojad" in desc_lower or "lluvia" in desc_lower),
+        "humedo": ("humedad" in desc_lower or "mojad" in desc_lower or "lluvia" in desc_lower or "charcos" in desc_lower or "llovido" in desc_lower or "rocío" in desc_lower),
         "seco": ("seco" in desc_lower or "árido" in desc_lower),
-        "sombra": ("sombr" in desc_lower or "oscur" in desc_lower),
+        "sombra": ("sombr" in desc_lower or "nublado" in desc_lower),
+        "noche": ("anochecer" in desc_lower or "oscur" in desc_lower or "atardecer" in desc_lower),
         "sol": ("sol" in desc_lower or "luz" in desc_lower or "brillante" in desc_lower),
         "frio": ("frí" in desc_lower or "helad" in desc_lower),
-        "calor": ("calor" in desc_lower or "caliente" in desc_lower),
-        "agua": ("agua" in desc_lower or "río" in desc_lower or "quebrada" in desc_lower)
+        "calor": ("calor" in desc_lower or "caliente" in desc_lower  or "cálido" in desc_lower),
+        #"agua": ("agua" in desc_lower or "río" in desc_lower or "quebrada" in desc_lower)
     }
 
     # Sugerencias según condiciones
     if condiciones["humedo"] and condiciones["sombra"]:
         especies_sugeridas.extend([
-            "Musgos (Bryophyta) - Tapetes verdes que retienen humedad",
-            "Líquenes crustosos - Simbiosis entre hongos y algas",
-            "Helechos (Pteridophyta) - Plantas vasculares sin semillas",
-            "Hongos saprofitos - Descomponedores de materia orgánica"
+            "Musgos y hepáticas: Campylopus, Fissidens, Sphagnum, Plagiochila, Metzgeria  ",
+            "Microorganismos del suelo - Bacterias (Pseudomonas, Acinetobacter,Pedomicrobium), hongos (Glomus, Acaulospora), protozoos (amebas,Chlamidomonas, Euglen )",
+            "Hongos saprofitos: Phellinus, Coprinellus, Ganoderma, Lactarius  ",
+            "Insectos: áfidos (Aphididae), escarabajos picudos (Curculionidae)",
+            "Arácnidos: opiliones (Sclerosomatidae)",
+            "Líquenes: Cora, Usnea"
+    
+       
         ])
-
-    if condiciones["agua"]:
+    if condiciones["noche"]:
         especies_sugeridas.extend([
-            "Briofitas acuáticas - Musgos que crecen en rocas húmedas",
-            "Insectos acuáticos - Larvas de libélulas, efímeras",
-            "Anfibios - Ranas y salamandras"
-        ])
+            "Insectos: Polilla bruja (Ascalapha odorata)"
+            "Arácnidos: opiliones "
+            "Microorganismos del suelo - Bacterias (Pseudomonas, Acinetobacter,Pedomicrobium), hongos (Glomus, Acaulospora), protozoos (amebas,Chlamidomonas, Euglen )",
+
+        
+        ])   
+
+#    if condiciones["agua"]:
+#        especies_sugeridas.extend([
+#            "Briofitas acuáticas - Musgos que crecen en rocas húmedas",
+#            "Insectos acuáticos - Larvas de libélulas, efímeras",
+#            "Anfibios - Ranas y salamandras"
+#        ])
 
     if condiciones["sol"]:
         especies_sugeridas.extend([
-            "Gramíneas - Pastos nativos",
-            "Artrópodos - Insectos polinizadores, arañas",
-            "Aves - Colibríes, atrapamoscas"
+            "Herbáceas: Diente de león (Taraxacum officinale), trébol blanco (Trifolium repens), morado",
+            "Líquenes: Cladonia, Lecanora caesiorubella, Flavopunctelia flaventior,Teloschistes exilis ",
+            "Insectos: Escarabajos de hojas (Chrysomelidae), Avispas parasitoides (Ichneumonidae), moscas de las flores (Syrphidae), abejorro (Bombus hortulanus), mariposas amarillas (Eurema)",
+            "Arañas de telas orbiculares (Araneidae), Araña espinosa (Micrathena bogota)"
         ])
 
     if condiciones["frio"]:
         especies_sugeridas.extend([
-            "Frailejones (Espeletia) - Plantas de páramo",
-            "Musgos de altura - Adaptados al frío",
+          
+            "Musgos y hepáticas adaptados al frío como Campylopus, Fissidens, Sphagnum, Plagiochila, Metzgeria  ",
             "Líquenes - Resistentes a condiciones extremas"
         ])
 
-    # Siempre agregar algunas especies comunes
+    
     especies_sugeridas.extend([
-        "Microorganismos del suelo - Bacterias, hongos, protozoos",
+        "Microorganismos del suelo - Bacterias (Pseudomonas, Acinetobacter,Pedomicrobium), hongos (Glomus, Acaulospora), protozoos (amebas,Chlamidomonas, Euglen )",
         "Colémbolos - Pequeños artrópodos del suelo",
-        "Ácaros - Arácnidos microscópicos"
+        "Ácaros - Arácnidos microscópicos",
+        "Arañas fantasma(Anyphaenidae)",
+        "Gorgojos (Compsus canescens)",
     ])
 
     if especies_sugeridas:
