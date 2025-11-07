@@ -211,3 +211,118 @@ def explorar(termino: str) -> str:
         return leer_pagina(fuentes[termino_lower])
     else:
         return f"Término '{termino}' no encontrado. Fuentes disponibles: {', '.join(fuentes.keys())}"
+
+def crear_mapa_emocional(descripcion: str) -> str:
+    """
+    Esta función genera un mapa emocional del Bosque La Macarena (Bogotá) utilizando la librería `prettymaps`. 
+    A partir de una descripción textual, detecta una emoción asociada y aplica una paleta de colores 
+    contrastante para representar visualmente ese estado emocional en un mapa del área.
+    """
+    import os
+    from datetime import datetime
+    import matplotlib
+    matplotlib.use('Agg')  # Se configura matplotlib para generar gráficos sin interfaz gráfica.
+    import matplotlib.pyplot as plt
+    from prettymaps import plot
+    import colorsys
+
+    # Coordenadas fijas del cosque de La Macarena.
+    coordenadas = (4.614773, -74.063173)
+
+    # Paletas de colores predefinidas, cada una asociada a una emoción distinta.
+    # Se eligen combinaciones contrastantes para que los mapas sean visualmente diferenciables.
+    paletas = {
+        "serenidad":  {"background": "#d8f3dc", "forest": "#1b4332", "water": "#95d5b2"},
+        "asombro":    {"background": "#fff8b5", "forest": "#289e4b", "water": "#9bf6ff"},
+        "nostalgia":  {"background": "#e0b1cb", "forest": "#5e548e", "water": "#9a8c98"},
+        "vitalidad":  {"background": "#D3D156", "forest": "#f3722c", "water": "#0755ff"},
+        "humedad":    {"background": "#a9def9", "forest": "#4cc9f0", "water": "#4361ee"},
+        "incomodidad":{"background": "#575455", "forest": "#f48c06", "water": "#9d0208"},
+        "gratitud":   {"background": "#fefae0", "forest": "#606c38", "water": "#283618"},
+    }
+
+    # Diccionario que relaciona palabras clave con emociones.
+    # Permite interpretar una descripción y asignarle una categoría emocional.
+    claves = {
+        "tranquilo": "serenidad", "calma": "serenidad", "paz": "serenidad",
+        "brillante": "asombro", "sorpresa": "asombro", "claro": "asombro",
+        "oscuro": "nostalgia", "gris": "nostalgia", "melancolico": "nostalgia",
+        "vivo": "vitalidad", "alegre": "vitalidad", "intenso": "vitalidad",
+        "humedo": "humedad", "lluvia": "humedad", "frio": "humedad",
+        "tenso": "incomodidad", "estres": "incomodidad", "ruido": "incomodidad",
+        "agradecido": "gratitud", "calido": "gratitud", "acogedor": "gratitud"
+    }
+
+    # Se convierte la descripción a minúsculas para facilitar la detección de palabras clave.
+    descripcion_lower = descripcion.lower()
+
+    # Se identifica la primera emoción asociada a una palabra presente en la descripción.
+    emocion_detectada = next((emo for palabra, emo in claves.items() if palabra in descripcion_lower), None)
+
+    # Si no se encuentra ninguna emoción, se solicita una descripción más detallada.
+    if not emocion_detectada:
+        return (
+            "[NECESITA_MAS_INFO]\n"
+            "No fue posible identificar emociones en la descripción.\n"
+            "Incluya palabras como: tranquilo, húmedo, luminoso, nostálgico, cálido, etc."
+        )
+
+    # Se selecciona la paleta de colores correspondiente a la emoción detectada.
+    paleta = paletas[emocion_detectada]
+
+    # Función auxiliar que ajusta la luminosidad de un color hexadecimal.
+    def ajustar_color(hex_color, factor=1.2):
+        rgb = tuple(int(hex_color[i:i+2], 16) / 255.0 for i in (1, 3, 5))
+        h, l, s = colorsys.rgb_to_hls(*rgb)
+        l = max(0, min(1, l * factor))
+        r, g, b = colorsys.hls_to_rgb(h, l, s)
+        return f"#{int(r*255):02x}{int(g*255):02x}{int(b*255):02x}"
+
+    try:
+        # Se crea una figura y un eje para el mapa, con el color de fondo de la emoción seleccionada.
+        fig, ax = plt.subplots(figsize=(10, 10), facecolor=paleta["background"])
+
+        # Se generan colores derivados para acentuar contraste entre elementos urbanos y naturales.
+        street_color = ajustar_color(paleta["forest"], 0.6)
+        building_color = ajustar_color(paleta["background"], 0.8)
+        edge_color = ajustar_color(paleta["forest"], 0.4)
+        text_color = ajustar_color(paleta["forest"], 0.3)
+
+        # Se define el estilo visual de cada categoría de elementos cartográficos.
+        style = {
+            "background": {"fc": paleta["background"]},
+            "perimeter": {"ec": edge_color, "lw": 1.2, "fc": paleta["background"]},
+            "streets": {"fc": street_color, "ec": edge_color, "lw": 0.9},
+            "buildings": {"fc": building_color, "ec": edge_color, "lw": 0.4},
+            "green": {"fc": paleta["forest"], "ec": edge_color, "lw": 0.4},
+            "forest": {"fc": paleta["forest"], "ec": edge_color, "lw": 0.4},
+            "water": {"fc": paleta["water"], "ec": edge_color, "lw": 0.6},
+        }
+
+        # Se genera el mapa centrado en las coordenadas del Bosque La Macarena.
+        plot(coordenadas, radius=800, ax=ax, style=style)
+
+        # Se define la ruta base hacia la carpeta del agente Gente_Bosque
+        base_dir = os.path.join(os.path.dirname(__file__), "Gente_Bosque", "cartografias")
+
+        # Se crea la carpeta para guardar los mapas dentro de Gente_Bosque, si aún no existe.
+        os.makedirs(base_dir, exist_ok=True)
+
+        # Se define un nombre de archivo único que incluye la emoción y la fecha.
+        filename = f"mapa_emocional_{emocion_detectada}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.png"
+        filepath = os.path.join(base_dir, filename)
+
+        # Se guarda el mapa como imagen PNG y se cierra la figura.
+        plt.savefig(filepath, dpi=250, bbox_inches="tight")
+        plt.close(fig)
+
+
+        # Se devuelve información sobre el resultado del proceso.
+        return (
+            f"Lugar: Bosque La Macarena (Bogotá)\n"
+            f"Emoción interpretada: {emocion_detectada}\n"
+        )
+
+    except Exception as e:
+        # En caso de error, se captura la excepción y se devuelve un mensaje informativo.
+        return f"Error al generar la cartografía emocional: {e}"

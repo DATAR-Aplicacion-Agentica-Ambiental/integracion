@@ -2,7 +2,7 @@ from google.adk.agents.llm_agent import Agent
 from google.adk.tools import FunctionTool
 
 # Importar las herramientas nativas
-from .tools import inferir_especies, explorar_pdf, leer_pagina, explorar
+from .tools import inferir_especies, explorar_pdf, leer_pagina, explorar, crear_mapa_emocional
 
 # Pasa las herramientas directamente en el constructor
 root_agent = Agent(
@@ -42,14 +42,22 @@ root_agent = Agent(
         - vida y relaciones ecológicas
         - el humano como parte del ecosistema
 
-        Mantén siempre un tono amable, curioso y naturalista. Fomenta la conexión con la naturaleza sin recurrir a lenguaje
-        excesivamente técnico ni a metáforas antropocéntricas.
-        Para esto usa los cuestionamientos planteados en los pdfs disponibles en la herramienta explorar_pdf.
+        Etapa 4 - Cartografía emocional del bosque:
+        Estamos en el Bosque La Macarena (Cerros Orientales de Bogota). Las coordenadas estan predefinidas.
+
+        Si el usuario ha compartido suficientes percepciones emocionales o sensoriales, ofrece crear un mapa 
+        visual del bosque coloreado segun sus sensaciones.
+
+        Para crear el mapa:
+        1. Llama a crear_mapa_emocional pasando TODA la descripcion emocional/sensorial del usuario
+        Ejemplo: crear_mapa_emocional("tranquilo humedo oscuro nostalgico")
+
     """,
     tools=[
         FunctionTool(inferir_especies),
         FunctionTool(explorar_pdf),
         FunctionTool(leer_pagina),
-        FunctionTool(explorar)
+        FunctionTool(explorar),
+        FunctionTool(crear_mapa_emocional)
     ]
 )
