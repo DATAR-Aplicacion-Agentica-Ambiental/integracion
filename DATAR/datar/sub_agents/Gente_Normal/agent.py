@@ -5,9 +5,9 @@ from google.genai import types
 from .utils import leer_instrucciones
 
 # Definición de los agentes individuales
-normal_agent = Agent(
+agente_normal = Agent(
     model='gemini-2.5-flash',
-    name='GenteAnormal',
+    name='GenteNormal',
     description=(
         'Un asistente presto a ayudar e informar '
         'con datos ambientales de Bogotá'
@@ -17,7 +17,7 @@ normal_agent = Agent(
 )
 
 # Agente especializado en interpretar respuestas usando solo emojis
-emoji_agent = Agent(
+agente_interprete_emojis = Agent(
     model='gemini-2.5-flash',
     name='GenteInterpreteDeEmojis',
     description=(
@@ -32,14 +32,14 @@ emoji_agent = Agent(
 )
 
 # Agente que ejecuta los agentes en paralelo
-parallel_agent = ParallelAgent(
-    name='GenteDeInstruccionesParalelas',
+agente_paralelizador = ParallelAgent(
+    name='GenteParalelizador',
     description='Corre múltiples agentes en paralelo.',
-    sub_agents=[normal_agent, emoji_agent],
+    sub_agents=[agente_normal, agente_interprete_emojis],
 )
 
 # Agente que combina las respuestas de los agentes paralelos
-merger_agent = Agent(
+agente_fusionador = Agent(
     model='gemini-2.5-flash',
     name='GenteFusionador',
     description=(
@@ -51,11 +51,11 @@ merger_agent = Agent(
 
 # Agente secuencial que primero ejecuta los agentes 
 # en paralelo y luego combina sus respuestas
-sequential_pipeline_agent = SequentialAgent(
+agente_encauzador_secuencial = SequentialAgent(
     name="GenteEncauzador",
-    sub_agents=[parallel_agent, merger_agent],
+    sub_agents=[agente_paralelizador, agente_fusionador],
     description="Coordina agentes en paralelo y luego combina sus respuestas."
 )
 
 # Agente raíz que se utilizará para interactuar
-root_agent = sequential_pipeline_agent
+root_agent = agente_encauzador_secuencial
