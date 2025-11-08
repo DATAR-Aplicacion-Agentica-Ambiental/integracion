@@ -7,14 +7,14 @@ def obtener_path_instrucciones():
     path_agentes = Path(__file__).parent
     return path_agentes / "instrucciones"
 
-def leer_instrucciones(archivo: str = "ins_defecto.txt"):
+def leer_instrucciones(archivo: str = "ins_defecto.md"):
     """
     Lee el contenido de un archivo de instrucciones 
     ubicado en la carpeta 'instrucciones'.
 
     Args:
         archivo (str): Nombre del archivo de instrucciones. 
-        Por defecto es 'ins_defecto.txt'.
+        Por defecto es 'ins_defecto.md'.
         
     Returns:
         str: Contenido del archivo de instrucciones.

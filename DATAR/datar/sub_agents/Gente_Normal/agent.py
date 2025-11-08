@@ -24,7 +24,7 @@ emoji_agent = Agent(
         'Recibe la solicitud del usuario y retorna una '
         'interpretación con sólo emojis'
     ),
-    instruction=leer_instrucciones("ins_emoji_agent.txt"),
+    instruction=leer_instrucciones("ins_emoji_agent.md"),
     output_key='emoji_response',
     generate_content_config=types.GenerateContentConfig(
         temperature=1.6
@@ -46,7 +46,7 @@ merger_agent = Agent(
         'Recibe las respuestas de múltiples agentes '
         'y las combina en una sola respuesta coherente.'
     ),
-    instruction=leer_instrucciones("ins_merger_agent.txt"),
+    instruction=leer_instrucciones("ins_merger_agent.md"),
 )
 
 # Agente secuencial que primero ejecuta los agentes 
