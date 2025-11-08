@@ -7,7 +7,7 @@ from .utils import leer_instrucciones
 # Definición de los agentes individuales
 normal_agent = Agent(
     model='gemini-2.5-flash',
-    name='normal_agent',
+    name='GenteAnormal',
     description=(
         'Un asistente presto a ayudar e informar '
         'con datos ambientales de Bogotá'
@@ -19,7 +19,7 @@ normal_agent = Agent(
 # Agente especializado en interpretar respuestas usando solo emojis
 emoji_agent = Agent(
     model='gemini-2.5-flash',
-    name='EmojiInterpretingAgent',
+    name='GenteInterpreteDeEmojis',
     description=(
         'Recibe la solicitud del usuario y retorna una '
         'interpretación con sólo emojis'
@@ -33,7 +33,7 @@ emoji_agent = Agent(
 
 # Agente que ejecuta los agentes en paralelo
 parallel_agent = ParallelAgent(
-    name='ParallelInstructionAgent',
+    name='GenteDeInstruccionesParalelas',
     description='Corre múltiples agentes en paralelo.',
     sub_agents=[normal_agent, emoji_agent],
 )
@@ -41,7 +41,7 @@ parallel_agent = ParallelAgent(
 # Agente que combina las respuestas de los agentes paralelos
 merger_agent = Agent(
     model='gemini-2.5-flash',
-    name='MergerAgent',
+    name='GenteFusionador',
     description=(
         'Recibe las respuestas de múltiples agentes '
         'y las combina en una sola respuesta coherente.'
@@ -52,7 +52,7 @@ merger_agent = Agent(
 # Agente secuencial que primero ejecuta los agentes 
 # en paralelo y luego combina sus respuestas
 sequential_pipeline_agent = SequentialAgent(
-    name="SequentialPipelineAgent",
+    name="GenteEncauzador",
     sub_agents=[parallel_agent, merger_agent],
     description="Coordina agentes en paralelo y luego combina sus respuestas."
 )
