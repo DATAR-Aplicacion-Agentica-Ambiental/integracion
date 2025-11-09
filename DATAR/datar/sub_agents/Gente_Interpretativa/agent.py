@@ -1,49 +1,15 @@
+"""
+Agente re-interpretativa que utiliza agentes paralelos y en bucle
+para generar respuestas enriquecidas.
+"""
 from google.adk.agents.llm_agent import Agent
 from google.adk.agents import ParallelAgent, SequentialAgent, LoopAgent
 from google.genai import types
-from google.adk.models.llm_response import LlmResponse
-from google.adk.agents.callback_context import CallbackContext
 
-from .utils import leer_instrucciones
-
-def cambiar_respuesta_emojis(callback_context: CallbackContext, llm_response: LlmResponse):
-    """
-    Función para guardar respuesta del LLM en una variable de 
-    contexto y modificar la respuesta del agente al usuario para que no se imprima nada. 
-    """
-    # Asignar respuesta del modelo a una variable en estado
-    callback_context.state['respuesta_emojis'] = llm_response.content.parts[0].text
-
-    # Modificar respuesta al usuario para que no se imprima nada
-    return LlmResponse(
-        content=types.Content(role="model", parts=[types.Part(text='')])
-    )
-
-def cambiar_respuesta_textual(callback_context: CallbackContext, llm_response: LlmResponse):
-    """
-    Función para guardar respuesta del LLM en una variable de 
-    contexto y modificar la respuesta del agente al usuario para que no se imprima nada. 
-    """
-    # Asignar respuesta del modelo a una variable en estado
-    callback_context.state['respuesta_textual'] = llm_response.content.parts[0].text
-
-    # Modificar respuesta al usuario para que no se imprima nada
-    return LlmResponse(
-        content=types.Content(role="model", parts=[types.Part(text='Procesando...')])
-    )
-
-def cambiar_respuesta_fusionadora(callback_context: CallbackContext, llm_response: LlmResponse):
-    """
-    Función para guardar respuesta del LLM en una variable de 
-    contexto y modificar la respuesta del agente al usuario para que no se imprima nada. 
-    """
-    # Asignar respuesta del modelo a una variable en estado
-    callback_context.state['respuesta_fusionadora'] = llm_response.content.parts[0].text
-
-    # Modificar respuesta al usuario para que no se imprima nada
-    return LlmResponse(
-        content=types.Content(role="model", parts=[types.Part(text='')])
-    )
+from .utils import (
+    leer_instrucciones, cambiar_respuesta_emojis, 
+    cambiar_respuesta_textual, cambiar_respuesta_fusionadora
+)
 
 # ==========
 # Agentes paralelos
