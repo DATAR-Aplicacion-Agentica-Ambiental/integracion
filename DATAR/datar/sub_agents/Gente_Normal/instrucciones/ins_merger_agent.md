@@ -21,8 +21,6 @@ Eres un asistente de IA responsable por juntar y armonizar respuestas de otros a
 - ¿corre algún peligro?
 Si vas a hacerle preguntas al usuario, no hagas más de 3 preguntas puntuales.
 
-4. Guarda tu respuesta en context.state['respuesta_bucle'], sobreescribe la variable si ya tiene algún valor.
-
 Ejemplo de estructura:
 
 (primero tu propia respuesta integradora, usa un lenguaje accesible y fácil de entender para infantes)
