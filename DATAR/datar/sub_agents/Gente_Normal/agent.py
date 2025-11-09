@@ -20,7 +20,7 @@ agente_interprete_emojis = Agent(
     output_key='respuesta_emojis',
     generate_content_config=types.GenerateContentConfig(
         temperature=1.8
-    )
+    ),
 )
 
 # Agente especializado en responder con narrativas, 
@@ -38,7 +38,7 @@ agente_interprete_textual = Agent(
     output_key='respuesta_textual',
     generate_content_config=types.GenerateContentConfig(
         temperature=1.6
-    )
+    ),
 )
 
 # ==========
@@ -61,7 +61,7 @@ agente_fusionador = Agent(
         'y las combina en una sola respuesta coherente.'
     ),
     instruction=leer_instrucciones("ins_merger_agent.md"),
-    output_key='respuesta_fusionadora'
+    output_key='respuesta_fusionadora',
 )
 
 # Agente que crea un bucle de interpretación paralela 
@@ -88,16 +88,15 @@ agente_re_interpretativo = Agent(
     ),
     instruction=leer_instrucciones("ins_re_interpretativo.md"),
     output_key='normal_response',
-    sub_agents=[agente_bucle]
 )
 
-# # Agente secuencial que primero ejecuta los agentes 
-# # en paralelo y luego combina sus respuestas
-# agente_encauzador_secuencial = SequentialAgent(
-#     name="GenteEncauzador",
-#     sub_agents=[agente_paralelizador, agente_fusionador],
-#     description="Coordina agentes en paralelo y luego combina sus respuestas."
-# )
+# Agente secuencial que primero ejecuta los agentes 
+# en paralelo y luego combina sus respuestas
+agente_encauzador_secuencial = SequentialAgent(
+    name="GenteEncauzador",
+    sub_agents=[agente_bucle, agente_re_interpretativo],
+    description="Coordina agentes en paralelo y luego combina sus respuestas."
+)
 
 # Agente raíz que se utilizará para interactuar
-root_agent = agente_re_interpretativo
+root_agent = agente_encauzador_secuencial
