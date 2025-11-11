@@ -36,24 +36,27 @@ from config import (
     OPENROUTER_API_KEY, GOOGLE_API_KEY, DATAR_DIR, WEB_DIR
 )
 
-# Importar el agente raíz y metadata
-from DATAR import root_agent, AGENTS_METADATA
-
-# Importar el orquestador
-from orchestrator import get_orchestrator
+# Importar el agente raíz y metadata desde la nueva estructura
+from DATAR.datar import root_agent, AGENTS_METADATA
+from google.adk.runners import InMemoryRunner
+from google.genai.types import Part, Content
 
 # Validar que root_agent está inicializado
 if not root_agent:
     raise RuntimeError("❌ root_agent no pudo ser inicializado. Verifica tus API keys.")
 
 print(f"✅ root_agent inicializado: {root_agent.name}")
+print(f"   Sub-agentes disponibles: {len(root_agent.sub_agents) if hasattr(root_agent, 'sub_agents') else 0}")
 
-# ============= GESTIÓN DE SESIONES =============
+# ============= GESTIÓN DE SESIONES CON GOOGLE ADK =============
 
-sessions_store: Dict[str, Dict[str, Any]] = {}
+# Crear runner para el root_agent
+runner = InMemoryRunner(agent=root_agent)
+print(f"✅ Runner inicializado para {root_agent.name}")
 
-# Inicializar el orquestador de agentes
-orchestrator = get_orchestrator()
+# Almacén de sesiones por usuario/session_id
+sessions_store: Dict[str, Any] = {}  # Sesiones de Google ADK
+sessions_metadata: Dict[str, Dict[str, Any]] = {}  # Metadata adicional (timestamps, etc.)
 
 # ============= APLICACIÓN FASTAPI =============
 
@@ -128,226 +131,96 @@ class AgentResponse(BaseModel):
     agent_name: str = Field(..., description="Nombre del agente que respondió")
     agent_id: str = Field(..., description="ID del agente")
 
-# ============= FUNCIONES AUXILIARES =============
+# ============= FUNCIONES AUXILIARES PARA GOOGLE ADK =============
 
-def _as_serializable_dict(obj: Any) -> Any:
-    """Convierte objetos con métodos de serialización en dicts simples."""
-    if isinstance(obj, dict):
-        return obj
-    if hasattr(obj, "model_dump"):
+async def get_or_create_session(session_id: str) -> Any:
+    """
+    Obtiene o crea una sesión de Google ADK para el ID dado.
+
+    Args:
+        session_id: ID de la sesión
+
+    Returns:
+        Objeto de sesión de Google ADK
+    """
+    if session_id not in sessions_store:
+        # Crear nueva sesión con Google ADK
         try:
-            return obj.model_dump()
-        except Exception:
-            pass
-    if hasattr(obj, "dict"):
-        try:
-            return obj.dict()
-        except Exception:
-            pass
-    if hasattr(obj, "__dict__"):
-        return {k: v for k, v in obj.__dict__.items() if not k.startswith("_")}
-    return obj
-
-def _flatten_content(content: Any) -> str:
-    """Normaliza contenido potencialmente estructurado a texto plano."""
-    if content is None:
-        return ""
-    if isinstance(content, str):
-        return content
-    if isinstance(content, list):
-        parts: List[str] = []
-        for item in content:
-            if isinstance(item, dict):
-                text = item.get("text") or item.get("content") or ""
-                parts.append(str(text))
-            else:
-                parts.append(str(item))
-        return "".join(parts)
-    return str(content)
-
-def _resolve_litellm_params() -> Dict[str, Any]:
-    """Obtiene la configuración del modelo LiteLLM."""
-    params: Dict[str, Any] = {}
-
-    agent_model = getattr(root_agent, "model", None)
-    if agent_model is not None:
-        for attr in ("model", "api_key", "api_base", "temperature", "max_tokens"):
-            value = getattr(agent_model, attr, None)
-            if value is not None:
-                key = "model" if attr == "model" else attr
-                params[key] = value
-
-    if "model" not in params:
-        params["model"] = "openrouter/minimax/minimax-m2:free"
-
-    if "api_key" not in params:
-        params["api_key"] = OPENROUTER_API_KEY
-
-    if "api_base" not in params:
-        params["api_base"] = "https://openrouter.ai/api/v1"
-
-    return {k: v for k, v in params.items() if v is not None}
-
-def _build_conversation(session_id: str) -> List[Dict[str, str]]:
-    """Construye el historial de mensajes en formato compatible con LiteLLM."""
-    conversation: List[Dict[str, str]] = []
-
-    system_instruction = getattr(root_agent, "instruction", None)
-    if system_instruction:
-        conversation.append({"role": "system", "content": system_instruction})
-
-    session_data = sessions_store.get(session_id)
-    if session_data and session_data.get("messages"):
-        for msg in session_data["messages"]:
-            if msg.get("role") in ("user", "assistant"):
-                conversation.append({
-                    "role": msg["role"],
-                    "content": msg["content"],
-                })
-
-    return conversation
-
-def _extract_text_from_response(model_response: Any) -> str:
-    """Extrae el texto de la primera respuesta del modelo LiteLLM."""
-    if model_response is None:
-        return "Sin respuesta del modelo"
-
-    if isinstance(model_response, str):
-        text = model_response.strip()
-        return text if text else "Sin respuesta del modelo"
-
-    response_obj = _as_serializable_dict(model_response)
-    choices = []
-
-    if isinstance(response_obj, dict):
-        choices = response_obj.get("choices") or []
-    else:
-        choices = getattr(model_response, "choices", []) or []
-
-    if not choices and hasattr(model_response, "model_dump"):
-        try:
-            dumped = model_response.model_dump()
-            choices = dumped.get("choices", []) if isinstance(dumped, dict) else []
-        except Exception:
-            pass
-
-    if not choices:
-        if hasattr(model_response, "content"):
-            content = getattr(model_response, "content", "")
-            if content:
-                return _flatten_content(content).strip()
-        return str(model_response).strip()
-
-    first_choice = choices[0]
-    first_choice = _as_serializable_dict(first_choice)
-
-    if isinstance(first_choice, dict):
-        message = first_choice.get("message")
-        message = _as_serializable_dict(message)
-        if isinstance(message, dict):
-            content = message.get("content")
-            if content:
-                return _flatten_content(content).strip()
-
-        fallback_text = first_choice.get("text") or first_choice.get("content")
-        if fallback_text:
-            return _flatten_content(fallback_text).strip()
-
-    if hasattr(model_response, "content") and model_response.content:
-        return _flatten_content(model_response.content).strip()
-
-    if hasattr(model_response, "text") and model_response.text:
-        return _flatten_content(model_response.text).strip()
-
-    return "Sin respuesta del modelo"
-
-async def _generate_agent_reply(session_id: str) -> str:
-    """Invoca el agente de forma no bloqueante y retorna el texto de respuesta."""
-
-    # Detectar si estamos usando Gemini nativo o LiteLLM
-    agent_model = getattr(root_agent, "model", None)
-    is_native_gemini = isinstance(agent_model, str)
-
-    if is_native_gemini:
-        # Usar Google Genai API directamente
-        return await _generate_reply_with_gemini(session_id, agent_model)
-    else:
-        # Usar LiteLLM
-        return await _generate_reply_with_litellm(session_id)
-
-async def _generate_reply_with_gemini(session_id: str, model_name: str) -> str:
-    """Genera respuesta usando Google Genai API directamente."""
-    from google import genai
-    from google.genai import types
-    from google.genai.errors import ClientError, ServerError
-
-    if not GOOGLE_API_KEY:
-        raise RuntimeError("GOOGLE_API_KEY no configurada para usar Gemini nativo.")
-
-    client = genai.Client(api_key=GOOGLE_API_KEY)
-    messages = _build_conversation(session_id)
-
-    # Convertir formato para Gemini
-    contents = []
-    system_instruction = None
-
-    for msg in messages:
-        if msg["role"] == "system":
-            system_instruction = msg["content"]
-            continue
-        contents.append(types.Content(
-            role="user" if msg["role"] == "user" else "model",
-            parts=[types.Part(text=msg["content"])]
-        ))
-
-    try:
-        response = await run_in_threadpool(
-            client.models.generate_content,
-            model=model_name,
-            contents=contents,
-            config=types.GenerateContentConfig(
-                system_instruction=system_instruction,
-                temperature=1.0,
+            session = await runner.session_service.create_session(
+                app_name=runner.app_name,
+                user_id="default_user"
             )
-        )
+            sessions_store[session_id] = session
+            sessions_metadata[session_id] = {
+                "created_at": datetime.now().isoformat(),
+                "last_activity": datetime.now().isoformat(),
+                "message_count": 0
+            }
+            print(f"📝 Sesión creada: {session_id}")
+        except Exception as e:
+            print(f"❌ Error creando sesión: {e}")
+            raise RuntimeError(f"Error al crear sesión: {str(e)}")
 
-        if response and response.text:
-            return response.text.strip()
-        return "Sin respuesta del modelo"
+    # Actualizar última actividad
+    if session_id in sessions_metadata:
+        sessions_metadata[session_id]["last_activity"] = datetime.now().isoformat()
 
-    except ClientError as e:
-        error_code = e.args[0] if e.args else 0
-        if error_code == 429:
-            raise RuntimeError("Cuota de Google Gemini excedida. Espera o verifica tu cuota.")
-        elif error_code == 404:
-            raise RuntimeError(f"Modelo '{model_name}' no encontrado.")
-        elif error_code == 503:
-            raise RuntimeError(f"Modelo '{model_name}' sobrecargado. Intenta de nuevo.")
-        else:
-            raise RuntimeError(f"Error de Google Gemini API ({error_code}): {str(e)}")
-    except ServerError as e:
-        raise RuntimeError(f"Error del servidor de Google. Intenta de nuevo.")
+    return sessions_store[session_id]
 
-async def _generate_reply_with_litellm(session_id: str) -> str:
-    """Genera respuesta usando LiteLLM."""
-    params = _resolve_litellm_params()
+async def send_message_to_agent(session_id: str, message: str, agent_id: Optional[str] = None) -> str:
+    """
+    Envía un mensaje al root_agent y obtiene la respuesta.
 
-    if not params.get("model"):
-        raise RuntimeError("Modelo de LiteLLM no configurado.")
+    Args:
+        session_id: ID de la sesión
+        message: Mensaje del usuario
+        agent_id: ID del sub-agente específico (opcional, para routing interno)
 
-    if not params.get("api_key"):
-        raise RuntimeError("No se encontró una API key válida para LiteLLM.")
+    Returns:
+        Respuesta del agente como texto
+    """
+    session = await get_or_create_session(session_id)
 
-    messages = _build_conversation(session_id)
+    # Preparar el mensaje
+    # Si se especifica un agent_id, podemos incluirlo en el mensaje para routing
+    mensaje_completo = message
+    if agent_id:
+        # El root_agent decidirá qué sub-agente usar basándose en el mensaje
+        # Podemos darle una pista incluyendo el nombre del agente
+        agent_meta = AGENTS_METADATA.get(agent_id)
+        if agent_meta:
+            mensaje_completo = f"[Dirigido a {agent_meta['nombre']}]: {message}"
 
-    raw_response = await run_in_threadpool(
-        completion,
-        messages=messages,
-        **params,
-    )
+    # Crear contenido del mensaje
+    content = Content(parts=[Part(text=mensaje_completo)], role="user")
 
-    response_text = _extract_text_from_response(raw_response)
-    return response_text.strip()
+    # Ejecutar el agente y recolectar respuesta
+    respuesta_texto = ""
+    try:
+        for event in runner.run(
+            user_id=session.user_id,
+            session_id=session.id,
+            new_message=content
+        ):
+            # Extraer el texto de la respuesta
+            if hasattr(event, 'content') and hasattr(event.content, 'parts'):
+                for part in event.content.parts:
+                    if hasattr(part, 'text') and part.text:
+                        respuesta_texto += part.text
+    except Exception as e:
+        print(f"❌ Error ejecutando agente: {e}")
+        raise RuntimeError(f"Error al ejecutar el agente: {str(e)}")
+
+    # Actualizar metadata
+    if session_id in sessions_metadata:
+        sessions_metadata[session_id]["message_count"] += 1
+        sessions_metadata[session_id]["last_activity"] = datetime.now().isoformat()
+
+    # Si no hay respuesta, usar mensaje por defecto
+    if not respuesta_texto or not respuesta_texto.strip():
+        respuesta_texto = f"[{root_agent.name}] procesó tu mensaje, pero no generó una respuesta de texto."
+
+    return respuesta_texto.strip()
 
 # ============= ENDPOINTS GENERALES =============
 
@@ -398,8 +271,10 @@ async def list_agents():
 
 @app.post("/api/chat", response_model=ChatResponse)
 async def chat_with_agent(request: ChatRequest):
-    """Envía un mensaje al agente y recibe una respuesta."""
-
+    """
+    Envía un mensaje al root_agent y recibe una respuesta.
+    El root_agent automáticamente dirigirá el mensaje al sub-agente apropiado.
+    """
     if not request.message or not request.message.strip():
         raise HTTPException(status_code=400, detail="El mensaje no puede estar vacío")
 
@@ -409,87 +284,61 @@ async def chat_with_agent(request: ChatRequest):
             detail=f"El mensaje no puede exceder {MAX_MESSAGE_LENGTH} caracteres"
         )
 
-    # Usar orquestador si se especifica agent_id
-    target_agent_id = request.agent_id or (orchestrator.obtener_agente_activo() or {}).get('id')
-
-    if target_agent_id:
-        try:
-            respuesta_orq = await orchestrator.procesar_mensaje(
-                mensaje=request.message,
-                agente_id=target_agent_id
-            )
-
-            if respuesta_orq.get("exitoso"):
-                return ChatResponse(
-                    response=respuesta_orq['mensaje'],
-                    agent_name=respuesta_orq['agente'],
-                    session_id=request.session_id or str(uuid.uuid4()),
-                    timestamp=datetime.now().isoformat()
-                )
-        except Exception as e:
-            print(f"⚠️  Error en orquestador: {e}, usando root_agent")
-
-    # Fallback: usar root_agent
+    # Generar session_id si no se proporciona
     session_id = request.session_id or str(uuid.uuid4())
     timestamp = datetime.now().isoformat()
 
-    if session_id not in sessions_store:
-        sessions_store[session_id] = {
-            "created_at": timestamp,
-            "messages": [],
-            "last_activity": timestamp
-        }
-
-    sessions_store[session_id]["messages"].append({
-        "role": "user",
-        "content": request.message,
-        "timestamp": timestamp
-    })
-
     try:
-        response_text = await _generate_agent_reply(session_id)
+        # Enviar mensaje al root_agent usando Google ADK
+        response_text = await send_message_to_agent(
+            session_id=session_id,
+            message=request.message,
+            agent_id=request.agent_id  # Opcional: para dar pistas al router
+        )
+
         if not response_text:
             raise ValueError("La respuesta del agente llegó vacía.")
+
+        # Truncar si es necesario
+        response_text = response_text[:MAX_RESPONSE_LENGTH]
+
+        # Determinar nombre del agente
+        agent_name = root_agent.name
+        if request.agent_id and request.agent_id in AGENTS_METADATA:
+            agent_name = AGENTS_METADATA[request.agent_id]["nombre"]
+
+        return ChatResponse(
+            response=response_text,
+            agent_name=agent_name,
+            session_id=session_id,
+            timestamp=datetime.now().isoformat()
+        )
+
     except Exception as e:
         import traceback
         error_details = traceback.format_exc()
-        print(f"❌ ERROR en _generate_agent_reply: {error_details}")
+        print(f"❌ ERROR al procesar mensaje: {error_details}")
         raise HTTPException(status_code=500, detail=f"Error al generar respuesta: {str(e)}")
-
-    assistant_timestamp = datetime.now().isoformat()
-
-    sessions_store[session_id]["messages"].append({
-        "role": "assistant",
-        "content": response_text,
-        "timestamp": assistant_timestamp
-    })
-    sessions_store[session_id]["last_activity"] = assistant_timestamp
-
-    response_text = response_text[:MAX_RESPONSE_LENGTH]
-
-    return ChatResponse(
-        response=response_text,
-        agent_name=root_agent.name,
-        session_id=session_id,
-        timestamp=assistant_timestamp
-    )
 
 @app.get("/api/sessions", response_model=List[SessionInfo])
 async def list_sessions():
     """Lista todas las sesiones activas"""
     sessions = []
-    for session_id, data in sessions_store.items():
+    for session_id, metadata in sessions_metadata.items():
         sessions.append(SessionInfo(
             session_id=session_id,
-            created_at=data["created_at"],
-            last_activity=data["last_activity"],
-            message_count=len(data["messages"])
+            created_at=metadata["created_at"],
+            last_activity=metadata["last_activity"],
+            message_count=metadata["message_count"]
         ))
     return sessions
 
 @app.get("/api/sessions/{session_id}", response_model=SessionHistoryResponse)
 async def get_session_history(session_id: str):
-    """Obtiene el historial completo de una sesión"""
+    """
+    Obtiene el historial completo de una sesión desde Google ADK.
+    Nota: El historial se mantiene en el runner de Google ADK.
+    """
     if session_id not in sessions_store:
         return SessionHistoryResponse(
             session_id=session_id,
@@ -498,34 +347,88 @@ async def get_session_history(session_id: str):
             message_count=0
         )
 
-    session_data = sessions_store[session_id]
-    return SessionHistoryResponse(
-        session_id=session_id,
-        messages=session_data["messages"],
-        created_at=session_data["created_at"],
-        message_count=len(session_data["messages"])
-    )
+    try:
+        session = sessions_store[session_id]
+        metadata = sessions_metadata.get(session_id, {})
+
+        # Obtener historial desde Google ADK
+        history = await runner.session_service.get_history(
+            user_id=session.user_id,
+            session_id=session.id
+        )
+
+        # Convertir el historial de Google ADK a formato de mensajes
+        messages = []
+        if history and hasattr(history, 'turns'):
+            for turn in history.turns:
+                if hasattr(turn, 'user_message') and turn.user_message:
+                    messages.append({
+                        "role": "user",
+                        "content": turn.user_message.parts[0].text if turn.user_message.parts else "",
+                        "timestamp": metadata.get("last_activity", "")
+                    })
+                if hasattr(turn, 'model_message') and turn.model_message:
+                    messages.append({
+                        "role": "assistant",
+                        "content": turn.model_message.parts[0].text if turn.model_message.parts else "",
+                        "timestamp": metadata.get("last_activity", "")
+                    })
+
+        return SessionHistoryResponse(
+            session_id=session_id,
+            messages=messages,
+            created_at=metadata.get("created_at", ""),
+            message_count=len(messages)
+        )
+    except Exception as e:
+        print(f"⚠️ Error obteniendo historial de sesión: {e}")
+        return SessionHistoryResponse(
+            session_id=session_id,
+            messages=[],
+            created_at="",
+            message_count=0
+        )
 
 @app.delete("/api/sessions/{session_id}")
 async def delete_session(session_id: str):
     """Elimina una sesión específica"""
+    deleted = False
     if session_id in sessions_store:
         del sessions_store[session_id]
+        deleted = True
+    if session_id in sessions_metadata:
+        del sessions_metadata[session_id]
+        deleted = True
+
+    if deleted:
         return {"message": f"Sesión {session_id} eliminada exitosamente"}
     return {"message": f"Sesión {session_id} no encontrada"}
 
 @app.post("/api/select-agent")
 async def select_agent(request: SelectAgentRequest):
-    """Selecciona un agente específico para la conversación"""
-    try:
-        resultado = orchestrator.seleccionar_agente(request.agent_id)
-        if not resultado.get("exitoso"):
-            raise HTTPException(status_code=404, detail=resultado.get("error"))
-        return resultado
-    except HTTPException:
-        raise
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Error al seleccionar agente: {str(e)}")
+    """
+    Retorna información sobre un agente específico.
+    Nota: Con el nuevo sistema, el root_agent maneja el routing automáticamente.
+    Este endpoint se mantiene por compatibilidad con el frontend.
+    """
+    if request.agent_id not in AGENTS_METADATA:
+        raise HTTPException(
+            status_code=404,
+            detail=f"Agente '{request.agent_id}' no encontrado. Agentes disponibles: {', '.join(AGENTS_METADATA.keys())}"
+        )
+
+    agent_meta = AGENTS_METADATA[request.agent_id]
+    mensaje_bienvenida = f"¡Hola! Soy {agent_meta['nombre']}. {agent_meta['descripcion']}. ¿En qué puedo ayudarte?"
+
+    return {
+        "exitoso": True,
+        "agente": agent_meta["nombre"],
+        "agente_id": request.agent_id,
+        "descripcion": agent_meta["descripcion"],
+        "mensaje": mensaje_bienvenida,
+        "color": agent_meta["color"],
+        "emoji": agent_meta.get("emoji", "🤖")
+    }
 
 # ============= ENDPOINTS ESPECÍFICOS POR AGENTE =============
 
@@ -537,163 +440,170 @@ async def select_agent(request: SelectAgentRequest):
 )
 async def chat_gente_montana(request: SimpleMessageRequest):
     """Chatea directamente con Gente Montaña - Cerros Orientales"""
+    agent_id = "gente_montana"
+    session_id = str(uuid.uuid4())  # Cada llamada directa usa una sesión única
+
     try:
-        respuesta = await orchestrator.procesar_mensaje(
-            mensaje=request.message,
-            agente_id="gente_montana"
+        response_text = await send_message_to_agent(
+            session_id=session_id,
+            message=request.message,
+            agent_id=agent_id
         )
-        if respuesta.get("exitoso"):
-            return AgentResponse(
-                response=respuesta["mensaje"],
-                agent_name=respuesta["agente"],
-                agent_id="gente_montana"
-            )
-        else:
-            raise HTTPException(status_code=500, detail=respuesta.get("error"))
+        return AgentResponse(
+            response=response_text,
+            agent_name=AGENTS_METADATA[agent_id]["nombre"],
+            agent_id=agent_id
+        )
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error: {str(e)}")
 
 @app.post(
-    "/api/chat/pasto_bogotano",
+    "/api/chat/gente_pasto",
     response_model=AgentResponse,
     tags=["Agentes Específicos"],
-    summary="🌿 Chat con PastoBogotano"
+    summary="🌿 Chat con Gente Pasto"
 )
-async def chat_pasto_bogotano(request: SimpleMessageRequest):
-    """Chatea con PastoBogotano - Especialista en vegetación"""
+async def chat_gente_pasto(request: SimpleMessageRequest):
+    """Chatea con Gente Pasto - Especialista en vegetación"""
+    agent_id = "gente_pasto"
+    session_id = str(uuid.uuid4())
+
     try:
-        respuesta = await orchestrator.procesar_mensaje(
-            mensaje=request.message,
-            agente_id="pasto_bogotano"
+        response_text = await send_message_to_agent(
+            session_id=session_id,
+            message=request.message,
+            agent_id=agent_id
         )
-        if respuesta.get("exitoso"):
-            return AgentResponse(
-                response=respuesta["mensaje"],
-                agent_name=respuesta["agente"],
-                agent_id="pasto_bogotano"
-            )
-        else:
-            raise HTTPException(status_code=500, detail=respuesta.get("error"))
+        return AgentResponse(
+            response=response_text,
+            agent_name=AGENTS_METADATA[agent_id]["nombre"],
+            agent_id=agent_id
+        )
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error: {str(e)}")
 
 @app.post(
-    "/api/chat/diario_intuitivo",
+    "/api/chat/gente_intuitiva",
     response_model=AgentResponse,
     tags=["Agentes Específicos"],
-    summary="📔 Chat con Diario Intuitivo"
+    summary="📔 Chat con Gente Intuitiva"
 )
-async def chat_diario_intuitivo(request: SimpleMessageRequest):
-    """Chatea con Diario Intuitivo - Visualizaciones emocionales"""
+async def chat_gente_intuitiva(request: SimpleMessageRequest):
+    """Chatea con Gente Intuitiva - Visualizaciones emocionales"""
+    agent_id = "gente_intuitiva"
+    session_id = str(uuid.uuid4())
+
     try:
-        respuesta = await orchestrator.procesar_mensaje(
-            mensaje=request.message,
-            agente_id="diario_intuitivo"
+        response_text = await send_message_to_agent(
+            session_id=session_id,
+            message=request.message,
+            agent_id=agent_id
         )
-        if respuesta.get("exitoso"):
-            return AgentResponse(
-                response=respuesta["mensaje"],
-                agent_name=respuesta["agente"],
-                agent_id="diario_intuitivo"
-            )
-        else:
-            raise HTTPException(status_code=500, detail=respuesta.get("error"))
+        return AgentResponse(
+            response=response_text,
+            agent_name=AGENTS_METADATA[agent_id]["nombre"],
+            agent_id=agent_id
+        )
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error: {str(e)}")
 
 @app.post(
-    "/api/chat/guatila_m",
+    "/api/chat/gente_interpretativa",
     response_model=AgentResponse,
     tags=["Agentes Específicos"],
-    summary="🥒 Chat con GuatilaM"
+    summary="🥒 Chat con Gente Interpretativa"
 )
-async def chat_guatila_m(request: SimpleMessageRequest):
-    """Chatea con GuatilaM - Pipeline paralelo con emojis"""
+async def chat_gente_interpretativa(request: SimpleMessageRequest):
+    """Chatea con Gente Interpretativa - Pipeline interpretativo"""
+    agent_id = "gente_interpretativa"
+    session_id = str(uuid.uuid4())
+
     try:
-        respuesta = await orchestrator.procesar_mensaje(
-            mensaje=request.message,
-            agente_id="guatila_m"
+        response_text = await send_message_to_agent(
+            session_id=session_id,
+            message=request.message,
+            agent_id=agent_id
         )
-        if respuesta.get("exitoso"):
-            return AgentResponse(
-                response=respuesta["mensaje"],
-                agent_name=respuesta["agente"],
-                agent_id="guatila_m"
-            )
-        else:
-            raise HTTPException(status_code=500, detail=respuesta.get("error"))
+        return AgentResponse(
+            response=response_text,
+            agent_name=AGENTS_METADATA[agent_id]["nombre"],
+            agent_id=agent_id
+        )
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error: {str(e)}")
 
 @app.post(
-    "/api/chat/agente_bosque",
+    "/api/chat/gente_bosque",
     response_model=AgentResponse,
     tags=["Agentes Específicos"],
-    summary="🌲 Chat con Agente Bosque"
+    summary="🌲 Chat con Gente Bosque"
 )
-async def chat_agente_bosque(request: SimpleMessageRequest):
-    """Chatea con Agente Bosque - Ecosistemas forestales con MCP"""
+async def chat_gente_bosque(request: SimpleMessageRequest):
+    """Chatea con Gente Bosque - Ecosistemas forestales con MCP"""
+    agent_id = "gente_bosque"
+    session_id = str(uuid.uuid4())
+
     try:
-        respuesta = await orchestrator.procesar_mensaje(
-            mensaje=request.message,
-            agente_id="agente_bosque"
+        response_text = await send_message_to_agent(
+            session_id=session_id,
+            message=request.message,
+            agent_id=agent_id
         )
-        if respuesta.get("exitoso"):
-            return AgentResponse(
-                response=respuesta["mensaje"],
-                agent_name=respuesta["agente"],
-                agent_id="agente_bosque"
-            )
-        else:
-            raise HTTPException(status_code=500, detail=respuesta.get("error"))
+        return AgentResponse(
+            response=response_text,
+            agent_name=AGENTS_METADATA[agent_id]["nombre"],
+            agent_id=agent_id
+        )
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error: {str(e)}")
 
 @app.post(
-    "/api/chat/agente_sonido",
+    "/api/chat/gente_sonora",
     response_model=AgentResponse,
     tags=["Agentes Específicos"],
-    summary="🎵 Chat con Agente Sonido"
+    summary="🎵 Chat con Gente Sonora"
 )
-async def chat_agente_sonido(request: SimpleMessageRequest):
-    """Chatea con Agente Sonido - Representaciones biocéntricas"""
+async def chat_gente_sonora(request: SimpleMessageRequest):
+    """Chatea con Gente Sonora - Representaciones biocéntricas"""
+    agent_id = "gente_sonora"
+    session_id = str(uuid.uuid4())
+
     try:
-        respuesta = await orchestrator.procesar_mensaje(
-            mensaje=request.message,
-            agente_id="agente_sonido"
+        response_text = await send_message_to_agent(
+            session_id=session_id,
+            message=request.message,
+            agent_id=agent_id
         )
-        if respuesta.get("exitoso"):
-            return AgentResponse(
-                response=respuesta["mensaje"],
-                agent_name=respuesta["agente"],
-                agent_id="agente_sonido"
-            )
-        else:
-            raise HTTPException(status_code=500, detail=respuesta.get("error"))
+        return AgentResponse(
+            response=response_text,
+            agent_name=AGENTS_METADATA[agent_id]["nombre"],
+            agent_id=agent_id
+        )
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error: {str(e)}")
 
 @app.post(
-    "/api/chat/horaculo",
+    "/api/chat/gente_horaculo",
     response_model=AgentResponse,
     tags=["Agentes Específicos"],
-    summary="🔮 Chat con Horáculo"
+    summary="🔮 Chat con Gente Horáculo"
 )
-async def chat_horaculo(request: SimpleMessageRequest):
-    """Chatea con Horáculo - Oráculo ambiental"""
+async def chat_gente_horaculo(request: SimpleMessageRequest):
+    """Chatea con Gente Horáculo - Oráculo ambiental"""
+    agent_id = "gente_horaculo"
+    session_id = str(uuid.uuid4())
+
     try:
-        respuesta = await orchestrator.procesar_mensaje(
-            mensaje=request.message,
-            agente_id="horaculo"
+        response_text = await send_message_to_agent(
+            session_id=session_id,
+            message=request.message,
+            agent_id=agent_id
         )
-        if respuesta.get("exitoso"):
-            return AgentResponse(
-                response=respuesta["mensaje"],
-                agent_name=respuesta["agente"],
-                agent_id="horaculo"
-            )
-        else:
-            raise HTTPException(status_code=500, detail=respuesta.get("error"))
+        return AgentResponse(
+            response=response_text,
+            agent_name=AGENTS_METADATA[agent_id]["nombre"],
+            agent_id=agent_id
+        )
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error: {str(e)}")
 
