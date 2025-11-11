@@ -1,0 +1,43 @@
+# DATAR - Dependencias del Proyecto Integrado
+# Instalar con: pip install -r requirements.txt
+
+# ===== CORE =====
+python-dotenv>=1.0.0
+uvicorn>=0.25.0
+pydantic>=2.5.0
+
+# ===== FASTAPI =====
+fastapi>=0.108.0
+
+# ===== GOOGLE ADK & AI =====
+google-adk>=1.0.0
+google-genai>=1.0.0
+
+# ===== LITELLM (OpenRouter) =====
+litellm>=1.17.0
+
+# ===== AGENTES ESPECÍFICOS =====
+
+# Para agente_bosque (MCP)
+fastmcp>=0.1.0
+
+# Para agente_sonido y pasto_bogotano (Audio)
+pydub>=0.25.1
+sounddevice>=0.4.6
+numpy>=1.24.0
+
+# Para diario_intuitivo (Visualización)
+pillow>=10.0.0
+
+# Para GuatilaM (instrucciones de archivos)
+# No requiere dependencias adicionales
+
+# ===== UTILIDADES =====
+requests>=2.31.0
+aiofiles>=23.0.0
+
+# ===== DESARROLLO (Opcional) =====
+# pytest>=7.4.0
+# pytest-asyncio>=0.21.0
+# black>=23.0.0
+# flake8>=6.0.0
