@@ -8,6 +8,7 @@ from .sub_agents.Gente_Interpretativa.agent import root_agent as Gente_Interpret
 from .sub_agents.Gente_Bosque.agent import root_agent as Gente_Bosque
 from .sub_agents.Gente_Sonora.agent import root_agent as Gente_Sonora
 from .sub_agents.Gente_Horaculo.agent import root_agent as Gente_Horaculo
+from .sub_agents.Gente_Compostada.agent import root_agent as Gente_Compostada
 
 root_agent = Agent(
     model=LiteLlm(
@@ -25,6 +26,7 @@ root_agent = Agent(
         Gente_Interpretativa,
         Gente_Bosque,
         Gente_Sonora,
-        Gente_Horaculo
+        Gente_Horaculo,
+        Gente_Compostada
     ],
 )
