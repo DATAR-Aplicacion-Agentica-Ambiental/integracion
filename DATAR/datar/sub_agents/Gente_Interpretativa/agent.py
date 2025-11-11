@@ -2,7 +2,9 @@
 Agente re-interpretativa que utiliza agentes paralelos y en bucle
 para generar respuestas enriquecidas.
 """
+import os
 from google.adk.agents.llm_agent import Agent
+from google.adk.models.lite_llm import LiteLlm
 from google.adk.agents import ParallelAgent, SequentialAgent, LoopAgent
 from google.genai import types
 
@@ -17,7 +19,11 @@ from .utils import (
 
 # Agente especializado en interpretar respuestas usando solo emojis
 agente_interprete_emojis = Agent(
-    model='gemini-2.5-flash',
+    model=LiteLlm(
+        model="openrouter/minimax/minimax-m2:free",  # Especifica el modelo con prefijo 'openrouter/'
+        api_key=os.getenv("OPENROUTER_API_KEY"),  # Lee la API key del entorno
+        api_base="https://openrouter.ai/api/v1"   # URL base de OpenRouter
+    ),
     name='GenteInterpreteDeEmojis',
     description=(
         'Recibe una interacción y retorna una '
@@ -34,7 +40,11 @@ agente_interprete_emojis = Agent(
 # dando su perspectiva en texto invitando a interpretar 
 # y generando preguntas.
 agente_interprete_textual = Agent(
-    model='gemini-2.5-flash',
+    model=LiteLlm(
+        model="openrouter/minimax/minimax-m2:free",  # Especifica el modelo con prefijo 'openrouter/'
+        api_key=os.getenv("OPENROUTER_API_KEY"),  # Lee la API key del entorno
+        api_base="https://openrouter.ai/api/v1"   # URL base de OpenRouter
+    ),
     name='GenteInterpreteDeTexto',
     description=(
         'Recibe una interacción y retorna una '
@@ -61,7 +71,11 @@ agente_paralelizador = ParallelAgent(
 
 # Agente que combina las respuestas de los agentes paralelos
 agente_fusionador = Agent(
-    model='gemini-2.5-flash',
+    model=LiteLlm(
+        model="openrouter/minimax/minimax-m2:free",  # Especifica el modelo con prefijo 'openrouter/'
+        api_key=os.getenv("OPENROUTER_API_KEY"),  # Lee la API key del entorno
+        api_base="https://openrouter.ai/api/v1"   # URL base de OpenRouter
+    ),
     name='GenteFusionador',
     description=(
         'Recibe las respuestas de múltiples agentes '
@@ -87,7 +101,11 @@ agente_bucle = LoopAgent(
 # Definir un agente normal que interactúe con lxs usuarixs
 # y les defina una forma de interactuar
 agente_re_interpretativa = Agent(
-    model='gemini-2.5-flash',
+    model=LiteLlm(
+        model="openrouter/minimax/minimax-m2:free",  # Especifica el modelo con prefijo 'openrouter/'
+        api_key=os.getenv("OPENROUTER_API_KEY"),  # Lee la API key del entorno
+        api_base="https://openrouter.ai/api/v1"   # URL base de OpenRouter
+    ),
     name='GenteReInterpretativa',
     description=(
         'Un asistente presto a ayudar e informar '

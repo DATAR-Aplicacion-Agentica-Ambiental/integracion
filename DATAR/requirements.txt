@@ -22,9 +22,9 @@ python-dotenv>=1.0.0
 google-genai==1.47.0
 
 # Sebastian1022 - Agente Sonido (Herramientas de audio, gráficos y composición)
-numpy>=1.25
+numpy>=1.26
 scipy>=1.11
-matplotlib>=3.5.0  # Gráficos sin interfaz GUI (backend Agg)
+matplotlib>=3.9.0  # Gráficos sin interfaz GUI (backend Agg)
 sounddevice>=0.4.8
 pydub>=0.25.1
 audioop-lts>=0.2.2  # Reemplazo de audioop para Python 3.13+
@@ -37,5 +37,6 @@ Pillow
 requests==2.32.4
 beautifulsoup4==4.13.4
 PyMuPDF  # proporciona el módulo `fitz`
+folium
 fastmcp
 mcp

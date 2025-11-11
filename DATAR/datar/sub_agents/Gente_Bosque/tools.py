@@ -214,7 +214,7 @@ def explorar(termino: str) -> str:
 
 def crear_mapa_emocional(descripcion: str) -> str:
     """
-    Genera un mapa emocional del Bosque La Macarena (Bogotá) utilizando la librería `prettymaps`. 
+    Genera un mapa emocional del Bosque La Macarena (Bogotá) utilizando la librería `folium`. 
     A partir de una descripción textual, detecta una emoción o sensación asociada y aplica una 
     paleta de colores contrastante para representar visualmente ese estado emocional.
 
@@ -231,31 +231,21 @@ def crear_mapa_emocional(descripcion: str) -> str:
     """
     import os
     from datetime import datetime
-    import matplotlib
-    matplotlib.use('Agg')
-    import matplotlib.pyplot as plt
-    from prettymaps import plot
+    import folium
     import colorsys
 
-    # Coordenadas fijas del Bosque de La Macarena.
+    # Coordenadas fijas del Bosque de La Macarena
     coordenadas = (4.614773, -74.063173)
 
     # Paletas de colores por emoción
     paletas = {
         "serenidad": {"background": "#CDE8E5", "forest": "#2C6E49", "water": "#A7C7E7"},
-
         "asombro": {"background": "#FFF1C1", "forest": "#8713D4", "water": "#73D2DE"},
-
         "curiosidad": {"background": "#FAF3DD", "forest": "#0B6E4F", "water": "#3ABEFF"},
-
         "contemplacion": {"background": "#E0CFCB", "forest": "#BB9DD6", "water": "#A7A6BA"},
-
         "melancolia": {"background": "#C3B1E1", "forest": "#3A3D5C", "water": "#6C91BF"},
-
         "vitalidad": {"background": "#FFE066", "forest": "#148D04", "water": "#0077B6"},
-
         "frescura": {"background": "#C0FDFB", "forest": "#00A896", "water": "#028090"},
-
         "alegria": {"background": "#FFF5B7", "forest": "#FF7B00", "water": "#F8DF00"}
     }
 
@@ -295,41 +285,35 @@ def crear_mapa_emocional(descripcion: str) -> str:
 
     paleta = paletas[emocion_detectada]
 
-    def ajustar_color(hex_color, factor=1.2):
-        rgb = tuple(int(hex_color[i:i + 2], 16) / 255.0 for i in (1, 3, 5))
-        h, l, s = colorsys.rgb_to_hls(*rgb)
-        l = max(0, min(1, l * factor))
-        r, g, b = colorsys.hls_to_rgb(h, l, s)
-        return f"#{int(r * 255):02x}{int(g * 255):02x}{int(b * 255):02x}"
-
     try:
-        fig, ax = plt.subplots(figsize=(10, 10), facecolor=paleta["background"])
-
-        street_color = ajustar_color(paleta["forest"], 0.6)
-        building_color = ajustar_color(paleta["background"], 0.8)
-        edge_color = ajustar_color(paleta["forest"], 0.4)
-
-        style = {
-            "background": {"fc": paleta["background"]},
-            "perimeter": {"ec": edge_color, "lw": 1.2, "fc": paleta["background"]},
-            "streets": {"fc": street_color, "ec": edge_color, "lw": 0.9},
-            "buildings": {"fc": building_color, "ec": edge_color, "lw": 0.4},
-            "green": {"fc": paleta["forest"], "ec": edge_color, "lw": 0.4},
-            "forest": {"fc": paleta["forest"], "ec": edge_color, "lw": 0.4},
-            "water": {"fc": paleta["water"], "ec": edge_color, "lw": 0.6},
-        }
-
-        plot(coordenadas, radius=800, ax=ax, style=style)
+        # Crear mapa con folium usando las coordenadas
+        mapa = folium.Map(
+            location=coordenadas,
+            zoom_start=14,
+            tiles="OpenStreetMap",
+            prefer_canvas=True
+        )
+        
+        # Agregar círculo coloreado representando la emoción
+        folium.Circle(
+            location=coordenadas,
+            radius=800,
+            popup=f"Emoción: {emocion_detectada}",
+            color=paleta["forest"],
+            fill=True,
+            fillColor=paleta["water"],
+            fillOpacity=0.6,
+            weight=2
+        ).add_to(mapa)
 
         # Guarda los mapas dentro de Gente_Bosque/cartografias
-        base_dir = os.path.join(os.path.dirname(__file__), "Gente_Bosque", "cartografias")
+        base_dir = os.path.join(os.path.dirname(__file__), "cartografias")
         os.makedirs(base_dir, exist_ok=True)
 
-        filename = f"mapa_emocional_{emocion_detectada}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.png"
+        filename = f"mapa_emocional_{emocion_detectada}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.html"
         filepath = os.path.join(base_dir, filename)
 
-        plt.savefig(filepath, dpi=250, bbox_inches="tight")
-        plt.close(fig)
+        mapa.save(filepath)
 
         return (
             f"Lugar: Bosque La Macarena (Bogotá)\n"

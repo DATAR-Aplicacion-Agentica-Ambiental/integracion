@@ -1,4 +1,6 @@
+import os
 from google.adk.agents.llm_agent import Agent
+from google.adk.models.lite_llm import LiteLlm
 from google.adk.tools import FunctionTool
 
 # Importar las herramientas nativas
@@ -6,7 +8,11 @@ from .tools import inferir_especies, explorar_pdf, leer_pagina, explorar, crear_
 
 # Pasa las herramientas directamente en el constructor
 root_agent = Agent(
-    model="gemini-2.0-flash-exp",
+    model=LiteLlm(
+        model="openrouter/minimax/minimax-m2:free",  # Especifica el modelo con prefijo 'openrouter/'
+        api_key=os.getenv("OPENROUTER_API_KEY"),  # Lee la API key del entorno
+        api_base="https://openrouter.ai/api/v1"   # URL base de OpenRouter
+    ),
     name="Gente_Bosque",
     description="""
         Este agente está diseñado para despertar interés y curiosidad, basado en las sensaciones iniciales
