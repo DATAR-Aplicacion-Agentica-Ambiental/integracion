@@ -116,50 +116,66 @@ def inferir_especies(descripcion: str) -> str:
 
     # Análisis de condiciones
     condiciones = {
-        "humedo": ("humedad" in desc_lower or "mojad" in desc_lower or "lluvia" in desc_lower),
+        "humedo": ("humedad" in desc_lower or "mojad" in desc_lower or "lluvia" in desc_lower or "charcos" in desc_lower or "llovido" in desc_lower or "rocío" in desc_lower),
         "seco": ("seco" in desc_lower or "árido" in desc_lower),
-        "sombra": ("sombr" in desc_lower or "oscur" in desc_lower),
+        "sombra": ("sombr" in desc_lower or "nublado" in desc_lower),
+        "noche": ("anochecer" in desc_lower or "oscur" in desc_lower or "atardecer" in desc_lower),
         "sol": ("sol" in desc_lower or "luz" in desc_lower or "brillante" in desc_lower),
         "frio": ("frí" in desc_lower or "helad" in desc_lower),
-        "calor": ("calor" in desc_lower or "caliente" in desc_lower),
-        "agua": ("agua" in desc_lower or "río" in desc_lower or "quebrada" in desc_lower)
+        "calor": ("calor" in desc_lower or "caliente" in desc_lower  or "cálido" in desc_lower),
+        #"agua": ("agua" in desc_lower or "río" in desc_lower or "quebrada" in desc_lower)
     }
 
     # Sugerencias según condiciones
     if condiciones["humedo"] and condiciones["sombra"]:
         especies_sugeridas.extend([
-            "Musgos (Bryophyta) - Tapetes verdes que retienen humedad",
-            "Líquenes crustosos - Simbiosis entre hongos y algas",
-            "Helechos (Pteridophyta) - Plantas vasculares sin semillas",
-            "Hongos saprofitos - Descomponedores de materia orgánica"
+            "Musgos y hepáticas: Campylopus, Fissidens, Sphagnum, Plagiochila, Metzgeria  ",
+            "Microorganismos del suelo - Bacterias (Pseudomonas, Acinetobacter,Pedomicrobium), hongos (Glomus, Acaulospora), protozoos (amebas,Chlamidomonas, Euglen )",
+            "Hongos saprofitos: Phellinus, Coprinellus, Ganoderma, Lactarius  ",
+            "Insectos: áfidos (Aphididae), escarabajos picudos (Curculionidae)",
+            "Arácnidos: opiliones (Sclerosomatidae)",
+            "Líquenes: Cora, Usnea"
+    
+       
         ])
-
-    if condiciones["agua"]:
+    if condiciones["noche"]:
         especies_sugeridas.extend([
-            "Briofitas acuáticas - Musgos que crecen en rocas húmedas",
-            "Insectos acuáticos - Larvas de libélulas, efímeras",
-            "Anfibios - Ranas y salamandras"
-        ])
+            "Insectos: Polilla bruja (Ascalapha odorata)"
+            "Arácnidos: opiliones "
+            "Microorganismos del suelo - Bacterias (Pseudomonas, Acinetobacter,Pedomicrobium), hongos (Glomus, Acaulospora), protozoos (amebas,Chlamidomonas, Euglen )",
+
+        
+        ])   
+
+#    if condiciones["agua"]:
+#        especies_sugeridas.extend([
+#            "Briofitas acuáticas - Musgos que crecen en rocas húmedas",
+#            "Insectos acuáticos - Larvas de libélulas, efímeras",
+#            "Anfibios - Ranas y salamandras"
+#        ])
 
     if condiciones["sol"]:
         especies_sugeridas.extend([
-            "Gramíneas - Pastos nativos",
-            "Artrópodos - Insectos polinizadores, arañas",
-            "Aves - Colibríes, atrapamoscas"
+            "Herbáceas: Diente de león (Taraxacum officinale), trébol blanco (Trifolium repens), morado",
+            "Líquenes: Cladonia, Lecanora caesiorubella, Flavopunctelia flaventior,Teloschistes exilis ",
+            "Insectos: Escarabajos de hojas (Chrysomelidae), Avispas parasitoides (Ichneumonidae), moscas de las flores (Syrphidae), abejorro (Bombus hortulanus), mariposas amarillas (Eurema)",
+            "Arañas de telas orbiculares (Araneidae), Araña espinosa (Micrathena bogota)"
         ])
 
     if condiciones["frio"]:
         especies_sugeridas.extend([
-            "Frailejones (Espeletia) - Plantas de páramo",
-            "Musgos de altura - Adaptados al frío",
+          
+            "Musgos y hepáticas adaptados al frío como Campylopus, Fissidens, Sphagnum, Plagiochila, Metzgeria  ",
             "Líquenes - Resistentes a condiciones extremas"
         ])
 
-    # Siempre agregar algunas especies comunes
+    
     especies_sugeridas.extend([
-        "Microorganismos del suelo - Bacterias, hongos, protozoos",
+        "Microorganismos del suelo - Bacterias (Pseudomonas, Acinetobacter,Pedomicrobium), hongos (Glomus, Acaulospora), protozoos (amebas,Chlamidomonas, Euglen )",
         "Colémbolos - Pequeños artrópodos del suelo",
-        "Ácaros - Arácnidos microscópicos"
+        "Ácaros - Arácnidos microscópicos",
+        "Arañas fantasma(Anyphaenidae)",
+        "Gorgojos (Compsus canescens)",
     ])
 
     if especies_sugeridas:
@@ -195,3 +211,131 @@ def explorar(termino: str) -> str:
         return leer_pagina(fuentes[termino_lower])
     else:
         return f"Término '{termino}' no encontrado. Fuentes disponibles: {', '.join(fuentes.keys())}"
+
+def crear_mapa_emocional(descripcion: str) -> str:
+    """
+    Genera un mapa emocional del Bosque La Macarena (Bogotá) utilizando la librería `prettymaps`. 
+    A partir de una descripción textual, detecta una emoción o sensación asociada y aplica una 
+    paleta de colores contrastante para representar visualmente ese estado emocional.
+
+    Emociones o sensaciones principales:
+    
+    - serenidad: calma, paz, tranquilidad, silencio reconfortante, conexión armónica con el entorno
+    - curiosidad: exploración activa, preguntas, investigar, intriga, deseo de descubrir
+    - contemplacion: reflexión profunda, observación sin prisa, introspección, pensamiento pausado
+    - melancolia: nostalgia, tristeza reflexiva, melancolía, pérdida, belleza dolorosa, memoria
+    - vitalidad: energía, vida abundante, movimiento, biodiversidad visible, entusiasmo
+    - frescura: humedad, rocío, bruma, niebla, lluvia, tierra mojada, ambiente húmedo
+    - asombro: sorpresa intensa, "wow", descubrimiento impactante, maravilla, lo inesperado
+    - alegria: felicidad pura, celebración, gozo, contento, bienestar emocional
+    """
+    import os
+    from datetime import datetime
+    import matplotlib
+    matplotlib.use('Agg')
+    import matplotlib.pyplot as plt
+    from prettymaps import plot
+    import colorsys
+
+    # Coordenadas fijas del Bosque de La Macarena.
+    coordenadas = (4.614773, -74.063173)
+
+    # Paletas de colores por emoción
+    paletas = {
+        "serenidad": {"background": "#CDE8E5", "forest": "#2C6E49", "water": "#A7C7E7"},
+
+        "asombro": {"background": "#FFF1C1", "forest": "#8713D4", "water": "#73D2DE"},
+
+        "curiosidad": {"background": "#FAF3DD", "forest": "#0B6E4F", "water": "#3ABEFF"},
+
+        "contemplacion": {"background": "#E0CFCB", "forest": "#BB9DD6", "water": "#A7A6BA"},
+
+        "melancolia": {"background": "#C3B1E1", "forest": "#3A3D5C", "water": "#6C91BF"},
+
+        "vitalidad": {"background": "#FFE066", "forest": "#148D04", "water": "#0077B6"},
+
+        "frescura": {"background": "#C0FDFB", "forest": "#00A896", "water": "#028090"},
+
+        "alegria": {"background": "#FFF5B7", "forest": "#FF7B00", "water": "#F8DF00"}
+    }
+
+    # Palabras clave asociadas a emociones (coherentes con las paletas)
+    claves = {
+        # Serenidad
+        "tranquilidad": "serenidad", "calma": "serenidad", "paz": "serenidad", "silencio": "serenidad",
+        # Curiosidad
+        "curiosidad": "curiosidad", "exploracion": "curiosidad", "descubrir": "curiosidad", "pregunta": "curiosidad",
+        # Contemplacion
+        "reflexion": "contemplacion", "observar": "contemplacion", "pensamiento": "contemplacion", "introspeccion": "contemplacion",
+        # Melancolia
+        "nostalgia": "melancolia", "tristeza": "melancolia", "melancolia": "melancolia", "recuerdo": "melancolia",
+        # Vitalidad
+        "energia": "vitalidad", "vida": "vitalidad", "entusiasmo": "vitalidad", "movimiento": "vitalidad",
+        # Frescura
+        "humedad": "frescura", "rocío": "frescura", "niebla": "frescura", "lluvia": "frescura", "bruma": "frescura",
+        # Asombro
+        "sorpresa": "asombro", "wow": "asombro", "maravilla": "asombro", "impactante": "asombro",
+        # Alegría
+        "felicidad": "alegria", "gozo": "alegria", "jubilo": "alegria", "contento": "alegria"
+    }
+
+    descripcion_lower = descripcion.lower()
+
+    emocion_detectada = next(
+        (emo for palabra, emo in claves.items() if palabra in descripcion_lower),
+        None
+    )
+
+    if not emocion_detectada:
+        return (
+            "[NECESITA_MAS_INFO]\n"
+            "No fue posible identificar emociones en la descripción.\n"
+            "Incluya palabras como: calma, curiosidad, nostalgia, energía, lluvia, sorpresa, felicidad, etc."
+        )
+
+    paleta = paletas[emocion_detectada]
+
+    def ajustar_color(hex_color, factor=1.2):
+        rgb = tuple(int(hex_color[i:i + 2], 16) / 255.0 for i in (1, 3, 5))
+        h, l, s = colorsys.rgb_to_hls(*rgb)
+        l = max(0, min(1, l * factor))
+        r, g, b = colorsys.hls_to_rgb(h, l, s)
+        return f"#{int(r * 255):02x}{int(g * 255):02x}{int(b * 255):02x}"
+
+    try:
+        fig, ax = plt.subplots(figsize=(10, 10), facecolor=paleta["background"])
+
+        street_color = ajustar_color(paleta["forest"], 0.6)
+        building_color = ajustar_color(paleta["background"], 0.8)
+        edge_color = ajustar_color(paleta["forest"], 0.4)
+
+        style = {
+            "background": {"fc": paleta["background"]},
+            "perimeter": {"ec": edge_color, "lw": 1.2, "fc": paleta["background"]},
+            "streets": {"fc": street_color, "ec": edge_color, "lw": 0.9},
+            "buildings": {"fc": building_color, "ec": edge_color, "lw": 0.4},
+            "green": {"fc": paleta["forest"], "ec": edge_color, "lw": 0.4},
+            "forest": {"fc": paleta["forest"], "ec": edge_color, "lw": 0.4},
+            "water": {"fc": paleta["water"], "ec": edge_color, "lw": 0.6},
+        }
+
+        plot(coordenadas, radius=800, ax=ax, style=style)
+
+        # Guarda los mapas dentro de Gente_Bosque/cartografias
+        base_dir = os.path.join(os.path.dirname(__file__), "Gente_Bosque", "cartografias")
+        os.makedirs(base_dir, exist_ok=True)
+
+        filename = f"mapa_emocional_{emocion_detectada}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.png"
+        filepath = os.path.join(base_dir, filename)
+
+        plt.savefig(filepath, dpi=250, bbox_inches="tight")
+        plt.close(fig)
+
+        return (
+            f"Lugar: Bosque La Macarena (Bogotá)\n"
+            f"Emoción interpretada: {emocion_detectada}\n"
+            f"Archivo generado: {filepath}"
+        )
+
+    except Exception as e:
+        return f"Error al generar la cartografía emocional: {e}"

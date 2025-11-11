@@ -4,7 +4,7 @@ from google.adk.models.lite_llm import LiteLlm
 from .sub_agents.Gente_Montaña.agent import root_agent as Gente_Montaña
 from .sub_agents.Gente_Pasto.agent import root_agent as Gente_Pasto
 from .sub_agents.Gente_Intuitiva.agent import root_agent as Gente_Intuitiva
-from .sub_agents.Gente_Normal.agent import root_agent as SequentialPipelineAgent
+from .sub_agents.Gente_Interpretativa.agent import root_agent as Gente_Interpretativa
 from .sub_agents.Gente_Bosque.agent import root_agent as Gente_Bosque
 from .sub_agents.Gente_Sonora.agent import root_agent as Gente_Sonora
 from .sub_agents.Gente_Horaculo.agent import root_agent as Gente_Horaculo
@@ -22,7 +22,7 @@ root_agent = Agent(
         Gente_Montaña,
         Gente_Pasto,
         Gente_Intuitiva,
-        SequentialPipelineAgent,
+        Gente_Interpretativa,
         Gente_Bosque,
         Gente_Sonora,
         Gente_Horaculo
