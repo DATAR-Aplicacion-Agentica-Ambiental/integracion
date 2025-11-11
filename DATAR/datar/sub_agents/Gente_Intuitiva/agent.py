@@ -3,7 +3,6 @@ import re
 from pathlib import Path
 from dotenv import load_dotenv
 from google.adk.agents.llm_agent import Agent
-from google.adk.agents.base_agent import AgentState
 from google.adk.tools import FunctionTool
 import google.genai.types as types
 from .visualizacion import generar_rio_emocional, guardar_imagen_texto
