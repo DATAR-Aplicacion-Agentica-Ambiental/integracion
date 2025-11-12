@@ -10,6 +10,58 @@ from .sub_agents.Gente_Sonora.agent import root_agent as Gente_Sonora
 from .sub_agents.Gente_Horaculo.agent import root_agent as Gente_Horaculo
 from .sub_agents.Gente_Compostada.agent import root_agent as Gente_Compostada
 
+# Metadata de los agentes para el API
+AGENTS_METADATA = {
+    "gente_montana": {
+        "nombre": "Gente Montaña",
+        "descripcion": "Guía de ecosistemas montañosos y cerros orientales de Bogotá",
+        "color": "#8B4513",
+        "emoji": "⛰️"
+    },
+    "gente_pasto": {
+        "nombre": "Gente Pasto",
+        "descripcion": "Especialista en ecosistemas de pastizales y áreas abiertas",
+        "color": "#90EE90",
+        "emoji": "🌾"
+    },
+    "gente_intuitiva": {
+        "nombre": "Gente Intuitiva",
+        "descripcion": "Interpreta patrones emocionales a través de emojis y visualizaciones",
+        "color": "#FFB6C1",
+        "emoji": "💭"
+    },
+    "gente_interpretativa": {
+        "nombre": "Gente Interpretativa",
+        "descripcion": "Asistente de interpretación textual y fusión de perspectivas",
+        "color": "#DDA0DD",
+        "emoji": "📖"
+    },
+    "gente_bosque": {
+        "nombre": "Gente Bosque",
+        "descripcion": "Despierta curiosidad sobre vida forestal, plantas, hongos e insectos",
+        "color": "#228B22",
+        "emoji": "🌳"
+    },
+    "gente_sonora": {
+        "nombre": "Gente Sonora",
+        "descripcion": "Crea sonidos, gráficos y composiciones de paisajes sonoros naturales",
+        "color": "#4169E1",
+        "emoji": "🎵"
+    },
+    "gente_horaculo": {
+        "nombre": "Gente Horáculo",
+        "descripcion": "Ofrece perspectivas temporales y predictivas sobre el ambiente",
+        "color": "#9370DB",
+        "emoji": "🔮"
+    },
+    "gente_compostada": {
+        "nombre": "Gente Compostada",
+        "descripcion": "Especialista en descomposición, suelos y ciclos de nutrientes",
+        "color": "#8B4726",
+        "emoji": "🍂"
+    }
+}
+
 root_agent = Agent(
     model=LiteLlm(
         model="openrouter/minimax/minimax-m2",  # Especifica el modelo con prefijo 'openrouter/'
