@@ -75,10 +75,10 @@ GOOGLE_KEY = os.getenv("GOOGLE_API_KEY")
 # Inicializar root_agent según las claves disponibles
 if OPENROUTER_KEY:
     # Configuración completa: OpenRouter para root, Gemini para sub-agentes
-    print("✅ Usando OpenRouter MiniMax para root_agent")
+    print("✅ Usando OpenRouter Llama 3.1 8B (gratis) para root_agent")
     root_agent = Agent(
         model=LiteLlm(
-            model="openrouter/minimax/minimax-m2:free",
+            model="openrouter/meta-llama/llama-3.1-8b-instruct:free",
             api_key=OPENROUTER_KEY,
             api_base="https://openrouter.ai/api/v1"
         ),

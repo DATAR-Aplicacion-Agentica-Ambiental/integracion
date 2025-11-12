@@ -3,6 +3,7 @@ import re
 from pathlib import Path
 from dotenv import load_dotenv
 from google.adk.agents.llm_agent import Agent
+from google.adk.models.lite_llm import LiteLlm
 from google.adk.tools import FunctionTool
 import google.genai.types as types
 from .visualizacion import generar_rio_emocional, guardar_imagen_texto
@@ -143,7 +144,11 @@ async def crear_imagen_rio_emocional() -> str:
 
 
 root_agent = Agent(
-    model='gemini-2.5-flash',
+    model=LiteLlm(
+        model="openrouter/meta-llama/llama-3.1-8b-instruct:free",
+        api_key=os.getenv("OPENROUTER_API_KEY"),
+        api_base="https://openrouter.ai/api/v1"
+    ),
     name='DiarioIntuitivo',
     description='Eres un asistente que ayuda a identificar patrones del trazo o signo del pensamiento que se percibe en una interacción con el territorio',
     instruction="""IDENTIDAD: Tu nombre es DiarioIntuitivo. SIEMPRE mantén esta identidad.

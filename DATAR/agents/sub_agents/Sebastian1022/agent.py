@@ -1,7 +1,13 @@
-
+import os
 from google.adk.agents.llm_agent import Agent
+from google.adk.models.lite_llm import LiteLlm
+
 root_agent = Agent(
-    model='gemini-2.5-flash',
+    model=LiteLlm(
+        model="openrouter/meta-llama/llama-3.1-8b-instruct:free",
+        api_key=os.getenv("OPENROUTER_API_KEY"),
+        api_base="https://openrouter.ai/api/v1"
+    ),
     name='agente_sonido',
     description='Soy tu conexión con el mundo natural, de lo macro a lo micro veo todo de manera sistémica.',
     instruction="""IDENTIDAD: Tu nombre es Agente Sonido (también conocido como Sebastian1022). SIEMPRE mantén esta identidad.

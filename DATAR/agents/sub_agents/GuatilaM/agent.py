@@ -1,12 +1,18 @@
+import os
 from google.adk.agents.llm_agent import Agent
 from google.adk.agents import ParallelAgent, SequentialAgent
+from google.adk.models.lite_llm import LiteLlm
 from google.genai import types
 
 from .utils import leer_instrucciones
 
 # Definición de los agentes individuales
 normal_agent = Agent(
-    model='gemini-2.5-flash',
+    model=LiteLlm(
+        model="openrouter/meta-llama/llama-3.1-8b-instruct:free",
+        api_key=os.getenv("OPENROUTER_API_KEY"),
+        api_base="https://openrouter.ai/api/v1"
+    ),
     name='normal_agent',
     description=(
         'Un asistente presto a ayudar e informar '
@@ -18,7 +24,11 @@ normal_agent = Agent(
 
 # Agente especializado en interpretar respuestas usando solo emojis
 emoji_agent = Agent(
-    model='gemini-2.5-flash',
+    model=LiteLlm(
+        model="openrouter/meta-llama/llama-3.1-8b-instruct:free",
+        api_key=os.getenv("OPENROUTER_API_KEY"),
+        api_base="https://openrouter.ai/api/v1"
+    ),
     name='EmojiInterpretingAgent',
     description=(
         'Recibe la solicitud del usuario y retorna una '
@@ -40,7 +50,11 @@ parallel_agent = ParallelAgent(
 
 # Agente que combina las respuestas de los agentes paralelos
 merger_agent = Agent(
-    model='gemini-2.5-flash',
+    model=LiteLlm(
+        model="openrouter/meta-llama/llama-3.1-8b-instruct:free",
+        api_key=os.getenv("OPENROUTER_API_KEY"),
+        api_base="https://openrouter.ai/api/v1"
+    ),
     name='MergerAgent',
     description=(
         'Recibe las respuestas de múltiples agentes '

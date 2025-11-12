@@ -3,6 +3,7 @@ from datetime import datetime
 from random import randint, choice
 from pydub import AudioSegment
 from google.adk.agents.llm_agent import Agent
+from google.adk.models.lite_llm import LiteLlm
 
 
 # --- Configuración de carpetas --- #
@@ -126,7 +127,11 @@ def generar_paisaje_sonoro(
 
 # ------- AGENTE --------
 root_agent = Agent(
-    model="gemini-2.5-flash",
+    model=LiteLlm(
+        model="openrouter/meta-llama/llama-3.1-8b-instruct:free",
+        api_key=os.getenv("OPENROUTER_API_KEY"),
+        api_base="https://openrouter.ai/api/v1"
+    ),
     name="PastoBogotano",
     description="Agente sonoro especializado en pastos y vegetación bogotana",
     instruction="""IDENTIDAD: Tu nombre es PastoBogotano. SIEMPRE mantén esta identidad.

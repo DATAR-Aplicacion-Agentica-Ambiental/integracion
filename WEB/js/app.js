@@ -1,6 +1,12 @@
 /**
  * {DATAR} - Frontend JavaScript
  * Lógica de interacción con los agentes
+ *
+ * ARQUITECTURA ACTUALIZADA:
+ * - El root_agent orquesta automáticamente todos los sub-agentes
+ * - No se requiere selección manual de agente
+ * - El sistema detecta automáticamente el agente apropiado según el mensaje
+ * - Soporte para multimedia (imágenes, audio, mapas)
  */
 
 // ===== CONFIGURACIÓN =====
@@ -9,7 +15,7 @@ const API_BASE_URL = window.location.hostname === 'localhost' || window.location
     ? 'http://localhost:8000'  // Desarrollo local
     : window.location.origin;  // Producción (usa la URL actual)
 let agents = [];
-let selectedAgent = null;
+let selectedAgent = null;  // Opcional: solo para mostrar info al usuario
 let sessionId = null;
 let attachedFiles = [];
 
@@ -17,14 +23,54 @@ let attachedFiles = [];
 document.addEventListener('DOMContentLoaded', async () => {
     console.log('🌿 Iniciando {DATAR}...');
 
-    // Cargar agentes
+    // Cargar agentes (informativo)
     await loadAgents();
 
     // Setup event listeners
     setupEventListeners();
 
+    // Iniciar sesión automáticamente
+    sessionId = generateSessionId();
+    console.log('📝 Sesión iniciada:', sessionId);
+
+    // Mostrar mensaje de bienvenida automáticamente
+    showWelcomeMessage();
+
     console.log('✅ Sistema inicializado');
 });
+
+/**
+ * Muestra mensaje de bienvenida sin requerir selección de agente
+ */
+function showWelcomeMessage() {
+    const messagesContainer = document.getElementById('chat-messages');
+    if (messagesContainer) {
+        messagesContainer.style.display = 'block';
+        messagesContainer.innerHTML = `
+            <button class="chat-close" onclick="closeChat()" title="Cerrar chat">&times;</button>
+            <div class="chat-message">
+                <div class="chat-message__label">Sistema DATAR</div>
+                <div class="chat-message__agent">
+                    ¡Bienvenido al Sistema Agéntico DATAR! 🌿
+                    <br><br>
+                    Puedes preguntarme sobre la Estructura Ecológica Principal de Bogotá.
+                    El sistema seleccionará automáticamente al agente más apropiado para responder tu consulta.
+                    <br><br>
+                    <strong>Agentes disponibles:</strong>
+                    <ul style="margin-top: 10px; padding-left: 20px;">
+                        ${agents.map(a => `<li><strong>${a.emoji || '🤖'} ${a.nombre}:</strong> ${a.descripcion}</li>`).join('')}
+                    </ul>
+                </div>
+            </div>
+        `;
+    }
+
+    // Focus en el input
+    const chatInput = document.getElementById('chat-input');
+    if (chatInput) {
+        chatInput.focus();
+    }
+}
 
 // ===== FUNCIONES DE CARGA =====
 
@@ -107,45 +153,40 @@ function getAgentIcon(agentId) {
 // ===== FUNCIONES DE CHAT =====
 
 /**
- * Selecciona un agente y abre el chat
+ * Muestra información sobre un agente (opcional - solo informativo)
+ * El root_agent orquestará automáticamente al agente apropiado
  */
 function selectAgent(agentId) {
     const agent = agents.find(a => a.id === agentId);
     if (!agent) return;
 
+    // Marcar como agente de interés (opcional)
     selectedAgent = agent;
 
-    // Generar nuevo session ID
-    sessionId = generateSessionId();
-
-    // Actualizar título del header
+    // Actualizar título del header (informativo)
     const headerTitle = document.getElementById('header-agent-name');
     if (headerTitle) {
-        headerTitle.textContent = agent.nombre;
+        headerTitle.textContent = `Explorando: ${agent.nombre}`;
     }
 
-    // Actualizar título del chat
-    const chatTitle = document.getElementById('chat-title');
-    if (chatTitle) {
-        chatTitle.textContent = `Chat con ${agent.nombre}`;
-    }
-
-    // Limpiar mensajes anteriores
+    // Agregar mensaje informativo sobre el agente
     const messagesContainer = document.getElementById('chat-messages');
     if (messagesContainer) {
-        messagesContainer.style.display = 'block';
-        messagesContainer.innerHTML = `
-            <button class="chat-close" onclick="closeChat()" title="Cerrar chat">&times;</button>
-            <div class="chat-message">
-                <div class="chat-message__label">Sistema</div>
-                <div class="chat-message__agent">
-                    ¡Hola! Soy ${agent.nombre}. ${agent.descripcion}. ¿En qué puedo ayudarte?
-                </div>
+        const infoDiv = document.createElement('div');
+        infoDiv.className = 'chat-message';
+        infoDiv.innerHTML = `
+            <div class="chat-message__label">Información</div>
+            <div class="chat-message__agent" style="background-color: ${agent.color}20; border-left: 3px solid ${agent.color};">
+                <strong>${agent.emoji || '🤖'} ${agent.nombre}</strong>
+                <br><br>
+                ${agent.descripcion}
+                <br><br>
+                <em>Nota: El sistema seleccionará automáticamente al agente más apropiado para tu consulta. No necesitas seleccionarlo manualmente.</em>
             </div>
         `;
+        messagesContainer.appendChild(infoDiv);
+        messagesContainer.scrollTop = messagesContainer.scrollHeight;
     }
-
-    // El chat siempre está visible, solo actualizamos el contenido
 
     // Focus en el input
     const chatInput = document.getElementById('chat-input');
@@ -161,13 +202,12 @@ function selectAgent(agentId) {
 }
 
 /**
- * Cierra el chat
+ * Cierra el chat (solo oculta, mantiene sesión)
  */
 function closeChat() {
     const messagesContainer = document.getElementById('chat-messages');
     if (messagesContainer) {
         messagesContainer.style.display = 'none';
-        messagesContainer.innerHTML = '<button class="chat-close" onclick="closeChat()" title="Cerrar chat">&times;</button>';
     }
 
     // Resetear título del header
@@ -183,7 +223,7 @@ function closeChat() {
     }
 
     selectedAgent = null;
-    sessionId = null;
+    // NO resetear sessionId - mantener continuidad de conversación
 }
 
 /**
@@ -233,8 +273,7 @@ async function sendMessage() {
             formData.append(`file_${index}`, file);
         });
 
-        // Enviar mensaje a la API
-        // Nota: El backend necesitará actualizarse para manejar FormData con archivos
+        // Enviar mensaje a la API (sin agent_id - el root_agent orquesta automáticamente)
         const response = await fetch(`${API_BASE_URL}/api/chat`, {
             method: 'POST',
             headers: {
@@ -242,14 +281,15 @@ async function sendMessage() {
             },
             body: JSON.stringify({
                 message: message,
-                session_id: sessionId,
-                files_count: attachedFiles.length,
-                file_names: attachedFiles.map(f => f.name)
+                session_id: sessionId
+                // NO enviamos agent_id - el root_agent decide automáticamente
             })
         });
 
+        // Manejar errores HTTP específicos
         if (!response.ok) {
-            throw new Error('Error al enviar mensaje');
+            const errorData = await response.json().catch(() => ({ detail: 'Error desconocido' }));
+            throw new Error(errorData.detail || `Error ${response.status}: ${response.statusText}`);
         }
 
         const data = await response.json();
@@ -257,15 +297,19 @@ async function sendMessage() {
         // Actualizar session ID
         sessionId = data.session_id;
 
-        // Agregar respuesta del agente al chat
-        addMessageToChat('agent', data.response);
+        // Agregar respuesta del agente al chat (con multimedia si existe)
+        addMessageToChat('agent', data.response, data.files || [], data.agent_name);
 
         // Limpiar archivos adjuntos después de enviar exitosamente
         clearAttachedFiles();
 
     } catch (error) {
         console.error('Error al enviar mensaje:', error);
-        addMessageToChat('system', '❌ Error al comunicarse con el agente. Por favor, intenta de nuevo.');
+
+        // El mensaje de error ya viene formateado desde el backend
+        const errorMessage = error.message || '❌ Error al comunicarse con el agente. Por favor, intenta de nuevo.';
+
+        addMessageToChat('system', errorMessage);
     } finally {
         // Rehabilitar input
         input.disabled = false;
@@ -276,9 +320,9 @@ async function sendMessage() {
 }
 
 /**
- * Agrega un mensaje al chat
+ * Agrega un mensaje al chat con soporte para multimedia
  */
-function addMessageToChat(role, content) {
+function addMessageToChat(role, content, files = [], agentName = null) {
     const messagesContainer = document.getElementById('chat-messages');
     if (!messagesContainer) return;
 
@@ -292,18 +336,65 @@ function addMessageToChat(role, content) {
         label = 'Tú';
         messageClass = 'chat-message__user';
     } else if (role === 'agent') {
-        label = selectedAgent ? selectedAgent.nombre : 'Agente';
+        label = agentName || (selectedAgent ? selectedAgent.nombre : 'root_agent');
         messageClass = 'chat-message__agent';
     } else {
         label = 'Sistema';
         messageClass = 'chat-message__agent';
     }
 
-    messageDiv.innerHTML = `
+    // Construir contenido del mensaje
+    let messageContent = `
         <div class="chat-message__label">${label}</div>
         <div class="${messageClass}">${escapeHtml(content)}</div>
     `;
 
+    // Agregar archivos multimedia si existen
+    if (files && files.length > 0) {
+        messageContent += '<div class="chat-message__media">';
+        files.forEach(file => {
+            if (file.type === 'image') {
+                messageContent += `
+                    <div class="media-item media-item--image">
+                        <img src="${API_BASE_URL}${file.url}" alt="${escapeHtml(file.filename)}"
+                             title="${escapeHtml(file.description || file.filename)}"
+                             style="max-width: 100%; max-height: 400px; border-radius: 8px; margin-top: 10px;">
+                        <p class="media-caption">${escapeHtml(file.filename)}</p>
+                    </div>
+                `;
+            } else if (file.type === 'audio') {
+                messageContent += `
+                    <div class="media-item media-item--audio">
+                        <p class="media-caption">🎵 ${escapeHtml(file.filename)}</p>
+                        <audio controls style="width: 100%; margin-top: 10px;">
+                            <source src="${API_BASE_URL}${file.url}" type="audio/wav">
+                            <source src="${API_BASE_URL}${file.url}" type="audio/mpeg">
+                            Tu navegador no soporta la reproducción de audio.
+                        </audio>
+                    </div>
+                `;
+            } else if (file.type === 'map') {
+                messageContent += `
+                    <div class="media-item media-item--map">
+                        <p class="media-caption">🗺️ ${escapeHtml(file.filename)}</p>
+                        <a href="${API_BASE_URL}${file.url}" target="_blank" class="media-link">Abrir mapa</a>
+                    </div>
+                `;
+            } else {
+                // Archivo de texto u otro tipo
+                messageContent += `
+                    <div class="media-item media-item--file">
+                        <a href="${API_BASE_URL}${file.url}" target="_blank" class="media-link">
+                            📄 ${escapeHtml(file.filename)}
+                        </a>
+                    </div>
+                `;
+            }
+        });
+        messageContent += '</div>';
+    }
+
+    messageDiv.innerHTML = messageContent;
     messagesContainer.appendChild(messageDiv);
 
     // Scroll al final

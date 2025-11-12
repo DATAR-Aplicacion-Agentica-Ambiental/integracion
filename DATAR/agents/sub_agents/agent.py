@@ -1,9 +1,14 @@
 from google.adk.agents.llm_agent import Agent
+from google.adk.models.lite_llm import LiteLlm
 import os
 
-# IMPORTANTE: Este agente usa Gemini (NO OpenRouter) para ser independiente del coordinador
+# IMPORTANTE: Este agente usa OpenRouter Llama 3.1 8B (gratis)
 root_agent = Agent(
-    model='gemini-2.5-flash',  # Usar Gemini, NO el mismo modelo que el coordinador
+    model=LiteLlm(
+        model="openrouter/meta-llama/llama-3.1-8b-instruct:free",
+        api_key=os.getenv("OPENROUTER_API_KEY"),
+        api_base="https://openrouter.ai/api/v1"
+    ),
     name='Gente_Montaña',
     description='Agente especializado en las montañas de Bogotá, especialmente los Cerros Orientales.',
     instruction="""

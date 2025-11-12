@@ -3,6 +3,7 @@
 #Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass
 
 from google.adk.agents.llm_agent import Agent
+from google.adk.models.lite_llm import LiteLlm
 from google.adk.tools.mcp_tool.mcp_toolset import MCPToolset
 from google.adk.tools.mcp_tool.mcp_session_manager import StdioConnectionParams
 from mcp import StdioServerParameters
@@ -23,7 +24,11 @@ mcp_bosque_tool = MCPToolset(
 
 # CORRECCIÓN: Pasa las herramientas directamente en el constructor
 root_agent = Agent(
-    model="gemini-2.0-flash-exp",
+    model=LiteLlm(
+        model="openrouter/meta-llama/llama-3.1-8b-instruct:free",
+        api_key=os.getenv("OPENROUTER_API_KEY"),
+        api_base="https://openrouter.ai/api/v1"
+    ),
     name="agente_bosque",
     description="""
         Este agente está diseñado para despertar interés y curiosidad, basado en las sensaciones iniciales

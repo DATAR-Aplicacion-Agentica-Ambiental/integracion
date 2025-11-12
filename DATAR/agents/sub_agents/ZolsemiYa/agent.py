@@ -1,7 +1,13 @@
+import os
 from google.adk.agents.llm_agent import Agent
+from google.adk.models.lite_llm import LiteLlm
 
 root_agent = Agent(
-    model='gemini-2.5-flash',
+    model=LiteLlm(
+        model="openrouter/meta-llama/llama-3.1-8b-instruct:free",
+        api_key=os.getenv("OPENROUTER_API_KEY"),
+        api_base="https://openrouter.ai/api/v1"
+    ),
     name='horaculo',
     description='Oráculo ambiental general',
     instruction="""

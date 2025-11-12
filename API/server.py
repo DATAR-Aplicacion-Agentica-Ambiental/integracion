@@ -12,6 +12,10 @@ Integra:
 import os
 import sys
 import uvicorn
+import re
+import shutil
+import asyncio
+import random
 from pathlib import Path
 from fastapi import FastAPI, HTTPException
 from fastapi.concurrency import run_in_threadpool
@@ -19,7 +23,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
 from pydantic import BaseModel, Field
-from typing import Optional, List, Dict, Any
+from typing import Optional, List, Dict, Any, Tuple
 from datetime import datetime
 import uuid
 
@@ -88,11 +92,19 @@ class ChatRequest(BaseModel):
     session_id: Optional[str] = None
     agent_id: Optional[str] = None
 
+class MediaFile(BaseModel):
+    """Representa un archivo multimedia generado por un agente"""
+    type: str = Field(..., description="Tipo de archivo: image, audio, map, text")
+    url: str = Field(..., description="URL relativa para acceder al archivo")
+    filename: str = Field(..., description="Nombre del archivo")
+    description: Optional[str] = Field(None, description="Descripción opcional del contenido")
+
 class ChatResponse(BaseModel):
     response: str
     agent_name: str
     session_id: str
     timestamp: str
+    files: Optional[List[MediaFile]] = Field(default=[], description="Archivos multimedia generados")
 
 class AgentInfo(BaseModel):
     id: str
@@ -129,8 +141,101 @@ class AgentResponse(BaseModel):
     response: str = Field(..., description="Respuesta del agente")
     agent_name: str = Field(..., description="Nombre del agente que respondió")
     agent_id: str = Field(..., description="ID del agente")
+    files: Optional[List[MediaFile]] = Field(default=[], description="Archivos multimedia generados")
 
 # ============= FUNCIONES AUXILIARES PARA GOOGLE ADK =============
+
+# Crear directorio para archivos generados
+OUTPUTS_DIR = WEB_DIR / "outputs"
+OUTPUTS_DIR.mkdir(exist_ok=True, parents=True)
+print(f"✅ Directorio de outputs: {OUTPUTS_DIR}")
+
+def detect_and_process_files(response_text: str) -> Tuple[str, List[Dict[str, str]]]:
+    """
+    Detecta archivos generados en la respuesta del agente y los copia a la carpeta outputs.
+
+    Args:
+        response_text: Texto de respuesta del agente
+
+    Returns:
+        Tupla (texto_limpio, lista_de_archivos)
+        - texto_limpio: Texto sin las rutas absolutas (reemplazadas con enlaces relativos)
+        - lista_de_archivos: Lista de diccionarios con metadata de archivos
+    """
+    files = []
+    cleaned_text = response_text
+
+    # Patrones para detectar rutas de archivos
+    # Busca rutas absolutas que contengan DATAR y terminen en extensiones comunes
+    patterns = [
+        r'/(?:mnt/c/|app/)?.*?DATAR[/\\].*?([a-zA-Z0-9_\-]+\.(png|jpg|jpeg|gif|svg|wav|mp3|ogg|html|pdf|txt))',
+        r'(?:Imagen|Audio|Archivo|Mapa)\s+guardad[oa]\s+en:\s*([^\s\n]+)',
+    ]
+
+    found_paths = set()
+    for pattern in patterns:
+        matches = re.finditer(pattern, response_text, re.IGNORECASE)
+        for match in matches:
+            # Extraer la ruta completa
+            full_match = match.group(0)
+            # Intentar encontrar la ruta completa en el texto
+            path_candidates = re.findall(r'[/\\][\w/\\.\-]+\.(?:png|jpg|jpeg|gif|svg|wav|mp3|ogg|html|pdf|txt)', full_match)
+            for path_str in path_candidates:
+                found_paths.add(path_str)
+
+    # Procesar cada archivo encontrado
+    for path_str in found_paths:
+        try:
+            source_path = Path(path_str)
+
+            # Convertir rutas absolutas de diferentes sistemas
+            if not source_path.is_absolute():
+                # Si es relativa, intentar desde PROJECT_ROOT
+                source_path = PROJECT_ROOT / path_str
+
+            # Si la ruta contiene /app/ (Docker), ajustar a PROJECT_ROOT
+            if '/app/' in str(source_path):
+                relative_part = str(source_path).split('/app/')[-1]
+                source_path = PROJECT_ROOT / relative_part
+
+            if source_path.exists() and source_path.is_file():
+                # Copiar a outputs con nombre único
+                timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+                unique_filename = f"{timestamp}_{source_path.name}"
+                dest_path = OUTPUTS_DIR / unique_filename
+
+                shutil.copy2(source_path, dest_path)
+                print(f"📁 Archivo copiado: {source_path.name} → {dest_path}")
+
+                # Determinar tipo de archivo
+                ext = source_path.suffix.lower()
+                file_type = "text"
+                if ext in ['.png', '.jpg', '.jpeg', '.gif', '.svg']:
+                    file_type = "image"
+                elif ext in ['.wav', '.mp3', '.ogg']:
+                    file_type = "audio"
+                elif ext in ['.html']:
+                    file_type = "map"
+
+                # Agregar a la lista de archivos
+                files.append({
+                    "type": file_type,
+                    "url": f"/static/outputs/{unique_filename}",
+                    "filename": source_path.name,
+                    "description": f"Archivo generado: {source_path.name}"
+                })
+
+                # Reemplazar la ruta absoluta en el texto con un enlace relativo
+                cleaned_text = cleaned_text.replace(
+                    path_str,
+                    f"/static/outputs/{unique_filename}"
+                )
+
+        except Exception as e:
+            print(f"⚠️ Error procesando archivo {path_str}: {e}")
+            continue
+
+    return cleaned_text, files
 
 async def get_or_create_session(session_id: str) -> Any:
     """
@@ -166,9 +271,65 @@ async def get_or_create_session(session_id: str) -> Any:
 
     return sessions_store[session_id]
 
-async def send_message_to_agent(session_id: str, message: str, agent_id: Optional[str] = None) -> str:
+async def send_message_to_agent_with_retry(
+    session_id: str,
+    message: str,
+    agent_id: Optional[str] = None,
+    max_retries: int = 3,
+    initial_delay: float = 2.0
+) -> Tuple[str, List[Dict[str, str]]]:
     """
-    Envía un mensaje al root_agent y obtiene la respuesta.
+    Envía mensaje con reintentos automáticos para errores 503/429 (sobrecarga del modelo).
+
+    Args:
+        session_id: ID de la sesión
+        message: Mensaje del usuario
+        agent_id: ID del sub-agente específico
+        max_retries: Máximo número de reintentos (default: 3)
+        initial_delay: Delay inicial en segundos (default: 2.0)
+
+    Returns:
+        Tupla (respuesta_texto, lista_archivos)
+    """
+    last_exception = None
+
+    for attempt in range(max_retries):
+        try:
+            print(f"🔄 Intento {attempt + 1}/{max_retries}")
+            return await send_message_to_agent(session_id, message, agent_id)
+
+        except HTTPException as e:
+            last_exception = e
+
+            # Solo reintentar en errores 503 (sobrecarga) y 429 (rate limit)
+            if e.status_code not in [503, 429]:
+                print(f"❌ Error no recuperable ({e.status_code}), no se reintentará")
+                raise
+
+            if attempt < max_retries - 1:
+                # Backoff exponencial: 2s, 4s, 8s
+                delay = initial_delay * (2 ** attempt)
+                jitter = delay * 0.2 * random.random()  # Agregar 20% de variación
+                wait_time = delay + jitter
+
+                print(f"⏳ Modelo sobrecargado. Reintentando en {wait_time:.1f}s...")
+                await asyncio.sleep(wait_time)
+            else:
+                print(f"❌ Falló después de {max_retries} intentos con error {e.status_code}")
+                raise HTTPException(
+                    status_code=e.status_code,
+                    detail=f"{e.detail}\n\n💡 El modelo sigue sobrecargado. Por favor, intenta en 1-2 minutos."
+                )
+
+    if last_exception:
+        raise last_exception
+
+    raise HTTPException(status_code=500, detail="Error inesperado en retry logic")
+
+
+async def send_message_to_agent(session_id: str, message: str, agent_id: Optional[str] = None) -> Tuple[str, List[Dict[str, str]]]:
+    """
+    Envía un mensaje al root_agent y obtiene la respuesta con archivos multimedia.
 
     Args:
         session_id: ID de la sesión
@@ -176,7 +337,7 @@ async def send_message_to_agent(session_id: str, message: str, agent_id: Optiona
         agent_id: ID del sub-agente específico (opcional, para routing interno)
 
     Returns:
-        Respuesta del agente como texto
+        Tupla (respuesta_texto, lista_archivos)
     """
     session = await get_or_create_session(session_id)
 
@@ -195,31 +356,98 @@ async def send_message_to_agent(session_id: str, message: str, agent_id: Optiona
 
     # Ejecutar el agente y recolectar respuesta
     respuesta_texto = ""
+    print(f"🔄 Ejecutando root_agent con mensaje: '{mensaje_completo[:50]}...'")
     try:
+        event_count = 0
         for event in runner.run(
             user_id=session.user_id,
             session_id=session.id,
             new_message=content
         ):
+            event_count += 1
+            print(f"📨 Event {event_count}: {type(event).__name__}")
+
             # Extraer el texto de la respuesta
             if hasattr(event, 'content') and hasattr(event.content, 'parts'):
+                print(f"   └─ Content parts: {len(event.content.parts)}")
                 for part in event.content.parts:
                     if hasattr(part, 'text') and part.text:
+                        print(f"      └─ Text part: {part.text[:100]}...")
                         respuesta_texto += part.text
+                    else:
+                        print(f"      └─ Non-text part: {type(part)}")
+            else:
+                print(f"   └─ No content/parts in event")
+
+        print(f"✅ Total events procesados: {event_count}")
+        print(f"📝 Respuesta total length: {len(respuesta_texto)} caracteres")
+
     except Exception as e:
+        import traceback
+        error_str = str(e).lower()
+        traceback_str = traceback.format_exc()
+
         print(f"❌ Error ejecutando agente: {e}")
-        raise RuntimeError(f"Error al ejecutar el agente: {str(e)}")
+        print(f"📋 Traceback completo:\n{traceback_str}")
+
+        # Detectar tipos específicos de error por el mensaje
+        if "503" in error_str or "overloaded" in error_str or "unavailable" in error_str:
+            raise HTTPException(
+                status_code=503,
+                detail="🔄 El modelo de IA está temporalmente sobrecargado. Por favor, intenta nuevamente en unos momentos."
+            )
+        elif "429" in error_str or "quota" in error_str or "rate limit" in error_str:
+            raise HTTPException(
+                status_code=429,
+                detail="⏱️ Has alcanzado el límite de solicitudes. Por favor, espera un momento antes de intentar nuevamente."
+            )
+        elif "401" in error_str or "403" in error_str or "api key" in error_str or "permission" in error_str:
+            raise HTTPException(
+                status_code=403,
+                detail="🔑 Error de autenticación con la API. Por favor, verifica la configuración."
+            )
+        elif "timeout" in error_str:
+            raise HTTPException(
+                status_code=504,
+                detail="⏳ La solicitud tardó demasiado. Por favor, intenta nuevamente."
+            )
+        else:
+            raise HTTPException(
+                status_code=500,
+                detail=f"❌ Error al procesar tu mensaje: {str(e)}"
+            )
 
     # Actualizar metadata
     if session_id in sessions_metadata:
         sessions_metadata[session_id]["message_count"] += 1
         sessions_metadata[session_id]["last_activity"] = datetime.now().isoformat()
 
-    # Si no hay respuesta, usar mensaje por defecto
+    # Si no hay respuesta, verificar si hubo un error en el thread de ADK
     if not respuesta_texto or not respuesta_texto.strip():
-        respuesta_texto = f"[{root_agent.name}] procesó tu mensaje, pero no generó una respuesta de texto."
+        if event_count == 0:
+            # No se recibió ningún evento - probablemente error de conexión
+            raise HTTPException(
+                status_code=503,
+                detail="🔄 No se pudo conectar con el modelo de IA. Por favor, intenta nuevamente."
+            )
+        elif event_count > 0:
+            # Se recibieron eventos pero sin texto - probablemente error durante procesamiento
+            # Esto puede ocurrir cuando hay error 503 en un thread de ADK
+            raise HTTPException(
+                status_code=503,
+                detail="🔄 El modelo de IA está temporalmente sobrecargado. Por favor, intenta nuevamente en unos momentos."
+            )
+        else:
+            # Caso inesperado
+            raise HTTPException(
+                status_code=500,
+                detail="❌ El modelo procesó tu mensaje pero no generó respuesta. Por favor, intenta con otra pregunta."
+            )
 
-    return respuesta_texto.strip()
+    # Detectar y procesar archivos generados
+    respuesta_limpia, archivos = detect_and_process_files(respuesta_texto.strip())
+
+    return respuesta_limpia, archivos
 
 # ============= ENDPOINTS GENERALES =============
 
@@ -288,11 +516,14 @@ async def chat_with_agent(request: ChatRequest):
     timestamp = datetime.now().isoformat()
 
     try:
-        # Enviar mensaje al root_agent usando Google ADK
-        response_text = await send_message_to_agent(
+        # Enviar mensaje al root_agent con reintentos automáticos
+        # Gemini gratis puede estar sobrecargado, así que somos más pacientes
+        response_text, files_list = await send_message_to_agent_with_retry(
             session_id=session_id,
             message=request.message,
-            agent_id=request.agent_id  # Opcional: para dar pistas al router
+            agent_id=request.agent_id,  # Opcional: para dar pistas al router
+            max_retries=5,  # Hasta 5 intentos (Gemini gratis está frecuentemente sobrecargado)
+            initial_delay=3.0  # Delay inicial de 3 segundos
         )
 
         if not response_text:
@@ -306,18 +537,30 @@ async def chat_with_agent(request: ChatRequest):
         if request.agent_id and request.agent_id in AGENTS_METADATA:
             agent_name = AGENTS_METADATA[request.agent_id]["nombre"]
 
+        # Convertir archivos a MediaFile objects
+        media_files = [MediaFile(**f) for f in files_list] if files_list else []
+
         return ChatResponse(
             response=response_text,
             agent_name=agent_name,
             session_id=session_id,
-            timestamp=datetime.now().isoformat()
+            timestamp=datetime.now().isoformat(),
+            files=media_files
         )
+
+    except HTTPException as e:
+        # Re-lanzar HTTPException con el código de estado correcto
+        print(f"⚠️ HTTPException en /api/chat: {e.status_code} - {e.detail}")
+        raise
 
     except Exception as e:
         import traceback
         error_details = traceback.format_exc()
-        print(f"❌ ERROR al procesar mensaje: {error_details}")
-        raise HTTPException(status_code=500, detail=f"Error al generar respuesta: {str(e)}")
+        print(f"❌ ERROR inesperado al procesar mensaje: {error_details}")
+        raise HTTPException(
+            status_code=500,
+            detail=f"❌ Error inesperado al generar respuesta: {str(e)[:200]}"
+        )
 
 @app.get("/api/sessions", response_model=List[SessionInfo])
 async def list_sessions():
@@ -429,182 +672,19 @@ async def select_agent(request: SelectAgentRequest):
         "emoji": agent_meta.get("emoji", "🤖")
     }
 
-# ============= ENDPOINTS ESPECÍFICOS POR AGENTE =============
-
-@app.post(
-    "/api/chat/gente_montana",
-    response_model=AgentResponse,
-    tags=["Agentes Específicos"],
-    summary="🏔️ Chat con Gente Montaña"
-)
-async def chat_gente_montana(request: SimpleMessageRequest):
-    """Chatea directamente con Gente Montaña - Cerros Orientales"""
-    agent_id = "gente_montana"
-    session_id = str(uuid.uuid4())  # Cada llamada directa usa una sesión única
-
-    try:
-        response_text = await send_message_to_agent(
-            session_id=session_id,
-            message=request.message,
-            agent_id=agent_id
-        )
-        return AgentResponse(
-            response=response_text,
-            agent_name=AGENTS_METADATA[agent_id]["nombre"],
-            agent_id=agent_id
-        )
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Error: {str(e)}")
-
-@app.post(
-    "/api/chat/gente_pasto",
-    response_model=AgentResponse,
-    tags=["Agentes Específicos"],
-    summary="🌿 Chat con Gente Pasto"
-)
-async def chat_gente_pasto(request: SimpleMessageRequest):
-    """Chatea con Gente Pasto - Especialista en vegetación"""
-    agent_id = "gente_pasto"
-    session_id = str(uuid.uuid4())
-
-    try:
-        response_text = await send_message_to_agent(
-            session_id=session_id,
-            message=request.message,
-            agent_id=agent_id
-        )
-        return AgentResponse(
-            response=response_text,
-            agent_name=AGENTS_METADATA[agent_id]["nombre"],
-            agent_id=agent_id
-        )
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Error: {str(e)}")
-
-@app.post(
-    "/api/chat/gente_intuitiva",
-    response_model=AgentResponse,
-    tags=["Agentes Específicos"],
-    summary="📔 Chat con Gente Intuitiva"
-)
-async def chat_gente_intuitiva(request: SimpleMessageRequest):
-    """Chatea con Gente Intuitiva - Visualizaciones emocionales"""
-    agent_id = "gente_intuitiva"
-    session_id = str(uuid.uuid4())
-
-    try:
-        response_text = await send_message_to_agent(
-            session_id=session_id,
-            message=request.message,
-            agent_id=agent_id
-        )
-        return AgentResponse(
-            response=response_text,
-            agent_name=AGENTS_METADATA[agent_id]["nombre"],
-            agent_id=agent_id
-        )
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Error: {str(e)}")
-
-@app.post(
-    "/api/chat/gente_interpretativa",
-    response_model=AgentResponse,
-    tags=["Agentes Específicos"],
-    summary="🥒 Chat con Gente Interpretativa"
-)
-async def chat_gente_interpretativa(request: SimpleMessageRequest):
-    """Chatea con Gente Interpretativa - Pipeline interpretativo"""
-    agent_id = "gente_interpretativa"
-    session_id = str(uuid.uuid4())
-
-    try:
-        response_text = await send_message_to_agent(
-            session_id=session_id,
-            message=request.message,
-            agent_id=agent_id
-        )
-        return AgentResponse(
-            response=response_text,
-            agent_name=AGENTS_METADATA[agent_id]["nombre"],
-            agent_id=agent_id
-        )
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Error: {str(e)}")
-
-@app.post(
-    "/api/chat/gente_bosque",
-    response_model=AgentResponse,
-    tags=["Agentes Específicos"],
-    summary="🌲 Chat con Gente Bosque"
-)
-async def chat_gente_bosque(request: SimpleMessageRequest):
-    """Chatea con Gente Bosque - Ecosistemas forestales con MCP"""
-    agent_id = "gente_bosque"
-    session_id = str(uuid.uuid4())
-
-    try:
-        response_text = await send_message_to_agent(
-            session_id=session_id,
-            message=request.message,
-            agent_id=agent_id
-        )
-        return AgentResponse(
-            response=response_text,
-            agent_name=AGENTS_METADATA[agent_id]["nombre"],
-            agent_id=agent_id
-        )
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Error: {str(e)}")
-
-@app.post(
-    "/api/chat/gente_sonora",
-    response_model=AgentResponse,
-    tags=["Agentes Específicos"],
-    summary="🎵 Chat con Gente Sonora"
-)
-async def chat_gente_sonora(request: SimpleMessageRequest):
-    """Chatea con Gente Sonora - Representaciones biocéntricas"""
-    agent_id = "gente_sonora"
-    session_id = str(uuid.uuid4())
-
-    try:
-        response_text = await send_message_to_agent(
-            session_id=session_id,
-            message=request.message,
-            agent_id=agent_id
-        )
-        return AgentResponse(
-            response=response_text,
-            agent_name=AGENTS_METADATA[agent_id]["nombre"],
-            agent_id=agent_id
-        )
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Error: {str(e)}")
-
-@app.post(
-    "/api/chat/gente_horaculo",
-    response_model=AgentResponse,
-    tags=["Agentes Específicos"],
-    summary="🔮 Chat con Gente Horáculo"
-)
-async def chat_gente_horaculo(request: SimpleMessageRequest):
-    """Chatea con Gente Horáculo - Oráculo ambiental"""
-    agent_id = "gente_horaculo"
-    session_id = str(uuid.uuid4())
-
-    try:
-        response_text = await send_message_to_agent(
-            session_id=session_id,
-            message=request.message,
-            agent_id=agent_id
-        )
-        return AgentResponse(
-            response=response_text,
-            agent_name=AGENTS_METADATA[agent_id]["nombre"],
-            agent_id=agent_id
-        )
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Error: {str(e)}")
+# ============= NOTA: ENDPOINTS ESPECÍFICOS ELIMINADOS =============
+#
+# Los endpoints específicos por agente (/api/chat/gente_montana, etc.) han sido
+# eliminados siguiendo la arquitectura correcta de ADK.
+#
+# RAZÓN: El root_agent debe manejar toda la orquestación automáticamente.
+# Los sub-agentes son seleccionados internamente por el root_agent basándose
+# en el contenido del mensaje, no mediante selección manual desde el frontend.
+#
+# Usar únicamente el endpoint /api/chat para todas las comunicaciones.
+# El root_agent orquestará automáticamente al sub-agente apropiado.
+#
+# =============================================================================
 
 # Servir frontend
 @app.get("/static/index.html")

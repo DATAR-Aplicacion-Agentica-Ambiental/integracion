@@ -48,6 +48,10 @@ imagenes_generadas/
 *.png
 *.jpg
 *.jpeg
+
+# WEB Outputs (archivos multimedia generados por agentes)
+WEB/outputs/*
+!WEB/outputs/.gitkeep
 !WEB/imagen_fondo.jpg
 
 # Testing
@@ -90,6 +94,7 @@ test_agents_simple.py  # Contiene API key hardcodeada - NO SUBIR
 
 # NOTAS
 CLAUDE.md
+GEMINI.md
 HABILITAR_ACCESO_PUBLICO.md
 RESUMEN_SEGURIDAD.md
 ARCHIVOS_PRIVADOS.md
