@@ -39,8 +39,8 @@ from config import (
     OPENROUTER_API_KEY, GOOGLE_API_KEY, DATAR_DIR, WEB_DIR
 )
 
-# Importar el agente raíz y metadata desde la nueva estructura
-from DATAR.datar import root_agent, AGENTS_METADATA
+# Importar el agente raíz desde la nueva estructura
+from DATAR.datar.agent import root_agent
 from google.adk.runners import InMemoryRunner
 from google.genai.types import Part, Content
 
@@ -342,14 +342,8 @@ async def send_message_to_agent(session_id: str, message: str, agent_id: Optiona
     session = await get_or_create_session(session_id)
 
     # Preparar el mensaje
-    # Si se especifica un agent_id, podemos incluirlo en el mensaje para routing
+    # El root_agent decidirá qué sub-agente usar basándose en el mensaje
     mensaje_completo = message
-    if agent_id:
-        # El root_agent decidirá qué sub-agente usar basándose en el mensaje
-        # Podemos darle una pista incluyendo el nombre del agente
-        agent_meta = AGENTS_METADATA.get(agent_id)
-        if agent_meta:
-            mensaje_completo = f"[Dirigido a {agent_meta['nombre']}]: {message}"
 
     # Crear contenido del mensaje
     content = Content(parts=[Part(text=mensaje_completo)], role="user")
@@ -488,17 +482,22 @@ async def health_check():
 
 @app.get("/api/agents", response_model=List[AgentInfo])
 async def list_agents():
-    """Lista todos los agentes disponibles"""
+    """Lista todos los sub-agentes disponibles del root_agent"""
     agents_list = []
 
-    for agent_id, meta in AGENTS_METADATA.items():
-        agents_list.append(AgentInfo(
-            id=agent_id.replace('_', '_'),  # Normalize IDs
-            nombre=meta['nombre'],
-            descripcion=meta['descripcion'],
-            color=meta['color'],
-            emoji=meta.get('emoji', '🤖')
-        ))
+    if hasattr(root_agent, 'sub_agents') and root_agent.sub_agents:
+        for sub_agent in root_agent.sub_agents:
+            # Extraer información del sub-agente
+            agent_id = sub_agent.name if hasattr(sub_agent, 'name') else 'unknown'
+            agent_description = sub_agent.description if hasattr(sub_agent, 'description') else 'Agente especializado'
+
+            agents_list.append(AgentInfo(
+                id=agent_id,
+                nombre=agent_id.replace('_', ' '),
+                descripcion=agent_description,
+                color='#4CAF50',  # Color por defecto
+                emoji='🤖'
+            ))
 
     return agents_list
 
@@ -538,10 +537,8 @@ async def chat_with_agent(request: ChatRequest):
         # Truncar si es necesario
         response_text = response_text[:MAX_RESPONSE_LENGTH]
 
-        # Determinar nombre del agente
+        # Usar el nombre del agente raíz
         agent_name = root_agent.name
-        if request.agent_id and request.agent_id in AGENTS_METADATA:
-            agent_name = AGENTS_METADATA[request.agent_id]["nombre"]
 
         # Convertir archivos a MediaFile objects
         media_files = [MediaFile(**f) for f in files_list] if files_list else []
@@ -655,27 +652,36 @@ async def delete_session(session_id: str):
 @app.post("/api/select-agent")
 async def select_agent(request: SelectAgentRequest):
     """
-    Retorna información sobre un agente específico.
+    Retorna información sobre el root_agent.
     Nota: Con el nuevo sistema, el root_agent maneja el routing automáticamente.
     Este endpoint se mantiene por compatibilidad con el frontend.
     """
-    if request.agent_id not in AGENTS_METADATA:
-        raise HTTPException(
-            status_code=404,
-            detail=f"Agente '{request.agent_id}' no encontrado. Agentes disponibles: {', '.join(AGENTS_METADATA.keys())}"
-        )
+    # Buscar el sub-agente solicitado
+    selected_agent = None
+    if hasattr(root_agent, 'sub_agents') and root_agent.sub_agents:
+        for sub_agent in root_agent.sub_agents:
+            if hasattr(sub_agent, 'name') and sub_agent.name == request.agent_id:
+                selected_agent = sub_agent
+                break
 
-    agent_meta = AGENTS_METADATA[request.agent_id]
-    mensaje_bienvenida = f"¡Hola! Soy {agent_meta['nombre']}. {agent_meta['descripcion']}. ¿En qué puedo ayudarte?"
+    if not selected_agent:
+        # Si no se encuentra el sub-agente, usar el root_agent
+        agent_name = root_agent.name
+        agent_description = root_agent.description if hasattr(root_agent, 'description') else "Agente principal de DATAR"
+    else:
+        agent_name = selected_agent.name
+        agent_description = selected_agent.description if hasattr(selected_agent, 'description') else "Agente especializado"
+
+    mensaje_bienvenida = f"¡Hola! Soy {agent_name}. {agent_description}. ¿En qué puedo ayudarte?"
 
     return {
         "exitoso": True,
-        "agente": agent_meta["nombre"],
+        "agente": agent_name,
         "agente_id": request.agent_id,
-        "descripcion": agent_meta["descripcion"],
+        "descripcion": agent_description,
         "mensaje": mensaje_bienvenida,
-        "color": agent_meta["color"],
-        "emoji": agent_meta.get("emoji", "🤖")
+        "color": "#4CAF50",
+        "emoji": "🤖"
     }
 
 # ============= NOTA: ENDPOINTS ESPECÍFICOS ELIMINADOS =============
