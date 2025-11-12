@@ -1,5 +1,9 @@
+# Git
+.git
+.gitignore
+
 # Python
-__pycache__/
+__pycache__
 *.py[cod]
 *$py.class
 *.so
@@ -16,12 +20,9 @@ parts/
 sdist/
 var/
 wheels/
-pip-wheel-metadata/
-share/python-wheels/
 *.egg-info/
 .installed.cfg
 *.egg
-MANIFEST
 
 # Virtual Environment
 .venv/
@@ -38,13 +39,10 @@ env/
 *~
 .DS_Store
 
-# Environment variables
+# Environment variables locales (se configurarán en Cloud)
 .env
 .env.local
 .env.*.local
-
-# Jupyter Notebook
-.ipynb_checkpoints
 
 # Testing
 .pytest_cache/
@@ -72,6 +70,12 @@ logs/
 *.bak
 *.swp
 
-# ---
+# Documentation
 CLAUDE.md
 .claude/
+README.md
+LICENSE
+
+# Outputs generados (se crearán en runtime)
+WEB/outputs/*
+DATAR/datar/sub_agents/Gente_Bosque/cartografias/*

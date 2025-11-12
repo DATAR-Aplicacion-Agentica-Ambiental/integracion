@@ -1,0 +1,42 @@
+# Google ADK - Agent Development Kit
+google-adk>=0.1.0
+
+# LiteLLM
+litellm>=1.63.1
+
+# FastAPI - Framework web
+fastapi>=0.104.0
+
+# Uvicorn - Servidor ASGI
+uvicorn>=0.24.0
+
+# Pydantic - Validación de datos
+pydantic>=2.0.0
+
+# Para desarrollo (opcional pero recomendado)
+python-multipart>=0.0.6
+httpx>=0.25.0
+python-dotenv>=1.0.0
+
+# GuatilaM
+google-genai==1.47.0
+
+# Sebastian1022 - Agente Sonido (Herramientas de audio, gráficos y composición)
+numpy>=1.26
+scipy>=1.11
+matplotlib>=3.9.0  # Gráficos sin interfaz GUI (backend Agg)
+sounddevice>=0.4.8
+pydub>=0.25.1
+audioop-lts>=0.2.2  # Reemplazo de audioop para Python 3.13+
+
+# M4r1l1
+python-dotenv
+Pillow
+
+# Lina Puerto
+requests==2.32.4
+beautifulsoup4==4.13.4
+PyMuPDF  # proporciona el módulo `fitz`
+folium
+fastmcp
+mcp

@@ -28,7 +28,8 @@ GOOGLE_API_KEY: Optional[str] = os.getenv("GEMINI_API_KEY") or os.getenv("GOOGLE
 # ============= CONFIGURACIÓN DEL SERVIDOR =============
 
 API_HOST: str = os.getenv("API_HOST", "0.0.0.0")
-API_PORT: int = int(os.getenv("API_PORT", "8000"))
+# Cloud Run usa PORT, si no está disponible usa API_PORT, si no usa 8000
+API_PORT: int = int(os.getenv("PORT", os.getenv("API_PORT", "8000")))
 API_ENV: str = os.getenv("API_ENV", "development")
 DEBUG: bool = API_ENV == "development"
 
