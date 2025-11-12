@@ -2,10 +2,10 @@ from google.adk.agents.llm_agent import Agent
 from google.adk.models.lite_llm import LiteLlm
 import os
 
-# IMPORTANTE: Este agente usa OpenRouter MiniMax
+# IMPORTANTE: Este agente usa OpenRouter GPT-3.5 Turbo
 root_agent = Agent(
     model=LiteLlm(
-        model="minimax/minimax-m2",
+        model="openai/gpt-3.5-turbo",
         api_key=os.getenv("OPENROUTER_API_KEY"),
         api_base="https://openrouter.ai/api/v1"
     ),

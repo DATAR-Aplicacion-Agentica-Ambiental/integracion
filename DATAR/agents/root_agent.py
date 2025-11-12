@@ -74,11 +74,11 @@ GOOGLE_KEY = os.getenv("GOOGLE_API_KEY")
 
 # Inicializar root_agent según las claves disponibles
 if OPENROUTER_KEY:
-    # Configuración completa: OpenRouter MiniMax para root y todos los sub-agentes
-    print("✅ Usando OpenRouter MiniMax para root_agent")
+    # Configuración: OpenRouter con GPT-3.5 Turbo (modelo confiable y económico)
+    print("✅ Usando OpenRouter GPT-3.5 Turbo para root_agent")
     root_agent = Agent(
         model=LiteLlm(
-            model="minimax/minimax-m2",
+            model="openai/gpt-3.5-turbo",
             api_key=OPENROUTER_KEY,
             api_base="https://openrouter.ai/api/v1"
         ),

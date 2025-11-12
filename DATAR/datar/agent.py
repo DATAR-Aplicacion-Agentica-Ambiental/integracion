@@ -31,11 +31,11 @@ SUB_AGENTS = [
 
 # Inicializar root_agent según las claves disponibles
 if OPENROUTER_KEY:
-    # Configuración completa: OpenRouter para root, Gemini para sub-agentes
+    # Configuración: OpenRouter con MiniMax (API verificada)
     print("✅ Usando OpenRouter MiniMax para root_agent")
     root_agent = Agent(
         model=LiteLlm(
-            model="openrouter/minimax/minimax-m2:free",
+            model="minimax/minimax-01",
             api_key=OPENROUTER_KEY,
             api_base="https://openrouter.ai/api/v1"
         ),

@@ -21,9 +21,9 @@ RUN pip install --no-cache-dir -r requirements.txt
 # Copiar todo el código del proyecto
 COPY . .
 
-# Exponer puerto 8000 (Cloud Run usa la variable PORT)
-ENV PORT=8000
-EXPOSE 8000
+# Exponer puerto 8080 (Cloud Run usa la variable PORT)
+ENV PORT=8080
+EXPOSE 8080
 
 # Variables de entorno predeterminadas (se sobrescriben en Cloud Run)
 ENV API_HOST=0.0.0.0

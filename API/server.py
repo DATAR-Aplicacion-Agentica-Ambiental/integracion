@@ -391,7 +391,13 @@ async def send_message_to_agent(session_id: str, message: str, agent_id: Optiona
         print(f"📋 Traceback completo:\n{traceback_str}")
 
         # Detectar tipos específicos de error por el mensaje
-        if "503" in error_str or "overloaded" in error_str or "unavailable" in error_str:
+        # IMPORTANTE: Detectar 404 ANTES que otros errores
+        if "404" in error_str or "no endpoints found" in error_str or "not found" in error_str:
+            raise HTTPException(
+                status_code=404,
+                detail="❌ El modelo de IA especificado no existe en OpenRouter. Por favor, verifica la configuración del modelo."
+            )
+        elif "503" in error_str or "overloaded" in error_str or "unavailable" in error_str:
             raise HTTPException(
                 status_code=503,
                 detail="🔄 El modelo de IA está temporalmente sobrecargado. Por favor, intenta nuevamente en unos momentos."

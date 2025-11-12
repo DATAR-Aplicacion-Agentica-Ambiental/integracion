@@ -145,7 +145,7 @@ async def crear_imagen_rio_emocional() -> str:
 
 root_agent = Agent(
     model=LiteLlm(
-        model="minimax/minimax-m2",
+        model="openai/gpt-3.5-turbo",
         api_key=os.getenv("OPENROUTER_API_KEY"),
         api_base="https://openrouter.ai/api/v1"
     ),

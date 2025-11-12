@@ -8,10 +8,10 @@ GOOGLE_KEY = os.getenv("GOOGLE_API_KEY") or os.getenv("GEMINI_API_KEY")
 
 # Inicializar Gente_Montaña según las claves disponibles
 if OPENROUTER_KEY:
-    # Configuración con OpenRouter
+    # Configuración con OpenRouter MiniMax
     root_agent = Agent(
         model=LiteLlm(
-            model="openrouter/minimax/minimax-m2:free",
+            model="minimax/minimax-01",
             api_key=OPENROUTER_KEY,
             api_base="https://openrouter.ai/api/v1"
         ),
