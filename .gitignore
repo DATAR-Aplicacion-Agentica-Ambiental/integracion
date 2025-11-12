@@ -20,9 +20,10 @@ env/
 *~
 .DS_Store
 
-# Environment Variables
+# Environment Variables (CRÍTICO: Contienen API keys)
 *.env
 !.env.example
+.env.cloud  # Archivo de referencia para Cloud Run (puede tener keys de ejemplo)
 
 # Logs
 *.log
@@ -35,9 +36,6 @@ logs/
 # Sessions
 API/sessions/*
 !API/sessions/.gitkeep
-
-# Documentation (exclude from repo)
-CLAUDE.md
 
 # Generated Files
 imagenes_generadas/
@@ -60,3 +58,38 @@ htmlcov/
 # Temporary
 *.tmp
 temp/
+
+# Capturas de Pantalla y Debugging (pueden contener información sensible)
+error.jpg
+error.png
+screenshot*.png
+screenshot*.jpg
+debug*.png
+debug*.jpg
+
+# Google Cloud / Deployment
+.gcloudignore
+service-account*.json
+*-key.json
+credentials.json
+
+# Backups (pueden contener API keys)
+*.backup
+*.bak
+backup/
+backups/
+
+# Notas Personales (pueden contener información sensible)
+NOTAS_PERSONALES.md
+TODO_PRIVADO.md
+notas.txt
+
+# Archivos con Secrets Expuestos (CRÍTICO)
+SOLUCION_ERROR_401.md  # Contiene API key real - NO SUBIR
+test_agents_simple.py  # Contiene API key hardcodeada - NO SUBIR
+
+# NOTAS
+CLAUDE.md
+HABILITAR_ACCESO_PUBLICO.md
+RESUMEN_SEGURIDAD.md
+ARCHIVOS_PRIVADOS.md

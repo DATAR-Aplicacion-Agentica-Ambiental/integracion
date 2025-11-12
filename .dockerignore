@@ -1,0 +1,50 @@
+# .dockerignore - Archivos a ignorar en el build de Docker
+
+# Virtual environments
+venv/
+env/
+.venv/
+ENV/
+
+# Python cache
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+
+# Environment files (se configuran en Cloud Run)
+.env
+.env.*
+!.env.example
+
+# Git
+.git/
+.gitignore
+.gitattributes
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Documentation
+*.md
+!README.md
+docs/
+
+# Testing
+.pytest_cache/
+.coverage
+htmlcov/
+*.log
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Otros archivos de configuración local
+*.local
+.editorconfig

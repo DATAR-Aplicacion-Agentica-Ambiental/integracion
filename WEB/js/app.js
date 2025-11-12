@@ -4,7 +4,10 @@
  */
 
 // ===== CONFIGURACIÓN =====
-const API_BASE_URL = 'http://localhost:8000';
+// Detectar automáticamente el entorno (desarrollo vs producción)
+const API_BASE_URL = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
+    ? 'http://localhost:8000'  // Desarrollo local
+    : window.location.origin;  // Producción (usa la URL actual)
 let agents = [];
 let selectedAgent = null;
 let sessionId = null;
