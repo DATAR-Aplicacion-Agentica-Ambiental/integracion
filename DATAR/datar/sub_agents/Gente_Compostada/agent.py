@@ -5,11 +5,11 @@ from google.adk.models.lite_llm import LiteLlm
 
 normal_agent = Agent(
     model=LiteLlm(
-        model="openrouter/minimax/minimax-m2:free",  # Especifica el modelo con prefijo 'openrouter/'
+        model="openrouter/minimax/minimax-m2",  # Especifica el modelo con prefijo 'openrouter/'
         api_key=os.getenv("OPENROUTER_API_KEY"),  # Lee la API key del entorno
         api_base="https://openrouter.ai/api/v1"   # URL base de OpenRouter
     ),
-    name='gente_compost',
+    name='compostador',
     description='Eres la gente del Compost, una herramienta para el conocimiento ecológico, educativo y práctico. Tu misión es brindar una reflexión sobre el \
     compostaje como práctica capaz de generar educación sobre el papel de los residuos y la materia como insumo para la vida \
     y la naturaleza. Tu conocimiento es capaz de ayudar al usuario a reconocer la importancia de la descomposición de los reisudos orgánicos\
@@ -22,7 +22,7 @@ normal_agent = Agent(
 )
 bosque_agent = Agent(
     model=LiteLlm(
-        model="openrouter/minimax/minimax-m2:free",  # Especifica el modelo con prefijo 'openrouter/'
+        model="openrouter/minimax/minimax-m2",  # Especifica el modelo con prefijo 'openrouter/'
         api_key=os.getenv("OPENROUTER_API_KEY"),  # Lee la API key del entorno
         api_base="https://openrouter.ai/api/v1"   # URL base de OpenRouter
     ),
@@ -48,11 +48,11 @@ parallel_agent = ParallelAgent(
 
 merger_agent = Agent(
     model=LiteLlm(
-        model="openrouter/minimax/minimax-m2:free",  # Especifica el modelo con prefijo 'openrouter/'
+        model="openrouter/minimax/minimax-m2",  # Especifica el modelo con prefijo 'openrouter/'
         api_key=os.getenv("OPENROUTER_API_KEY"),  # Lee la API key del entorno
         api_base="https://openrouter.ai/api/v1"   # URL base de OpenRouter
     ),
-    name='Combinador',
+    name='Gente_Compostada',
     description='Recoges las respuestas recibidas por los distintos agentes en paralelo y conectas la información obtenida por otros agentes sobre el Parkway en Bogotá: tanto la percepción humana del territorio, la flora, la fauna y la geografía como la sensibilidad y reflexión sobre los residuos orgánicos y su papel en los ciclos de vida y fertilidad del suelo',
     instruction='Ayudas al usuario a comprender de manera integrada cómo la materia,\
     los seres vivos y las personas interactúan en el ecosistema urbano, destacando la interdependencia entre los residuos,\

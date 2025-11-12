@@ -20,7 +20,7 @@ from .utils import (
 # Agente especializado en interpretar respuestas usando solo emojis
 agente_interprete_emojis = Agent(
     model=LiteLlm(
-        model="openrouter/minimax/minimax-m2:free",  # Especifica el modelo con prefijo 'openrouter/'
+        model="openrouter/minimax/minimax-m2",  # Especifica el modelo con prefijo 'openrouter/'
         api_key=os.getenv("OPENROUTER_API_KEY"),  # Lee la API key del entorno
         api_base="https://openrouter.ai/api/v1"   # URL base de OpenRouter
     ),
@@ -41,7 +41,7 @@ agente_interprete_emojis = Agent(
 # y generando preguntas.
 agente_interprete_textual = Agent(
     model=LiteLlm(
-        model="openrouter/minimax/minimax-m2:free",  # Especifica el modelo con prefijo 'openrouter/'
+        model="openrouter/minimax/minimax-m2",  # Especifica el modelo con prefijo 'openrouter/'
         api_key=os.getenv("OPENROUTER_API_KEY"),  # Lee la API key del entorno
         api_base="https://openrouter.ai/api/v1"   # URL base de OpenRouter
     ),
@@ -72,7 +72,7 @@ agente_paralelizador = ParallelAgent(
 # Agente que combina las respuestas de los agentes paralelos
 agente_fusionador = Agent(
     model=LiteLlm(
-        model="openrouter/minimax/minimax-m2:free",  # Especifica el modelo con prefijo 'openrouter/'
+        model="openrouter/minimax/minimax-m2",  # Especifica el modelo con prefijo 'openrouter/'
         api_key=os.getenv("OPENROUTER_API_KEY"),  # Lee la API key del entorno
         api_base="https://openrouter.ai/api/v1"   # URL base de OpenRouter
     ),
@@ -102,7 +102,7 @@ agente_bucle = LoopAgent(
 # y les defina una forma de interactuar
 agente_re_interpretativa = Agent(
     model=LiteLlm(
-        model="openrouter/minimax/minimax-m2:free",  # Especifica el modelo con prefijo 'openrouter/'
+        model="openrouter/minimax/minimax-m2",  # Especifica el modelo con prefijo 'openrouter/'
         api_key=os.getenv("OPENROUTER_API_KEY"),  # Lee la API key del entorno
         api_base="https://openrouter.ai/api/v1"   # URL base de OpenRouter
     ),
