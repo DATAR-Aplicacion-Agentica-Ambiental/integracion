@@ -305,19 +305,29 @@ Ver archivo [LICENSE](LICENSE) para detalles.
 ## 👥 Equipo
 
 - **MangleRojo ORG**: Orquestación de agentes
-- **cdavidbm**: Desarrollo API y Web
-- Contribuidores: GuatilaM, Sebastian1022, M4r1l1, Lina Puerto
+- **Laboratoristas**:
+```
+      1. Angie Catalina Quintero Rivera
+      2. Juan Pablo Roa Paez
+      3. Lina María González Rodríguez
+      4. Lina Duarte Tovar
+      5. Diego Alejandro Rojas Merchán
+      6. Lina Sofía Puerto Rojas
+      7. Julián Felipe González Sanchez
+      8. Johan Camilo Méndez Castro
+      9. Linda Ximena Torres Gutiérrez
+      10. Diana Catalina Charry Mesa
+      11. Victor Manuel Jaramillo
+      12. Nicolás Gaitán Albarracín
+      13. Laura Carolina Triana Martínez
+      14. Daniel Panche
+      15. Javier Camilo Guevara Rodríguez
+  ```
+- [**cdavidbm**:](https://github.com/cdavidbm) Desarrollo API y Web
 
 ## 📞 Contacto
 
 Para preguntas o colaboraciones, abre un issue en el repositorio.
-
-## 🌟 Agradecimientos
-
-- Google ADK por el framework de agentes
-- OpenRouter por el acceso a modelos LLM
-- Universidad Distrital Francisco José de Caldas - Bosque La Macarena
-- Comunidad de código abierto
 
 ---
 
