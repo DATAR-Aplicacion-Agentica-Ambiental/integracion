@@ -74,11 +74,11 @@ GOOGLE_KEY = os.getenv("GOOGLE_API_KEY")
 
 # Inicializar root_agent según las claves disponibles
 if OPENROUTER_KEY:
-    # Configuración completa: OpenRouter para root, Gemini para sub-agentes
-    print("✅ Usando OpenRouter Llama 3.1 8B (gratis) para root_agent")
+    # Configuración completa: OpenRouter MiniMax para root y todos los sub-agentes
+    print("✅ Usando OpenRouter MiniMax para root_agent")
     root_agent = Agent(
         model=LiteLlm(
-            model="openrouter/meta-llama/llama-3.1-8b-instruct:free",
+            model="minimax/minimax-m2",
             api_key=OPENROUTER_KEY,
             api_base="https://openrouter.ai/api/v1"
         ),
@@ -95,25 +95,8 @@ if OPENROUTER_KEY:
             horaculo
         ],
     )
-elif GOOGLE_KEY:
-    # Solo Google: usar Gemini para todo
-    print("⚠️ Solo GOOGLE_API_KEY disponible, usando Gemini 2.5 Flash para root_agent")
-    root_agent = Agent(
-        model='gemini-2.5-flash',
-        name='root_agent',
-        description='Agente raíz DATAR - Estructura Ecológica Principal de Bogotá',
-        instruction='Reflexiona y responde preguntas de manera clara y concisa sobre la Estructura Ecológica Principal de Bogotá.',
-        sub_agents=[
-            Gente_Montaña,
-            PastoBogotano,
-            DiarioIntuitivo,
-            SequentialPipelineAgent,
-            agente_bosque,
-            agente_sonido,
-            horaculo
-        ],
-    )
 else:
-    # Sin claves
-    print("❌ ERROR: Se requiere al menos GOOGLE_API_KEY o OPENROUTER_API_KEY")
+    # Sin clave de OpenRouter
+    print("❌ ERROR: Se requiere OPENROUTER_API_KEY configurada en .env")
+    print("❌ El sistema ya no soporta Gemini, solo OpenRouter")
     root_agent = None

@@ -9,7 +9,7 @@ from .utils import leer_instrucciones
 # Definición de los agentes individuales
 normal_agent = Agent(
     model=LiteLlm(
-        model="openrouter/meta-llama/llama-3.1-8b-instruct:free",
+        model="minimax/minimax-m2",
         api_key=os.getenv("OPENROUTER_API_KEY"),
         api_base="https://openrouter.ai/api/v1"
     ),
@@ -25,7 +25,7 @@ normal_agent = Agent(
 # Agente especializado en interpretar respuestas usando solo emojis
 emoji_agent = Agent(
     model=LiteLlm(
-        model="openrouter/meta-llama/llama-3.1-8b-instruct:free",
+        model="minimax/minimax-m2",
         api_key=os.getenv("OPENROUTER_API_KEY"),
         api_base="https://openrouter.ai/api/v1"
     ),
@@ -51,7 +51,7 @@ parallel_agent = ParallelAgent(
 # Agente que combina las respuestas de los agentes paralelos
 merger_agent = Agent(
     model=LiteLlm(
-        model="openrouter/meta-llama/llama-3.1-8b-instruct:free",
+        model="minimax/minimax-m2",
         api_key=os.getenv("OPENROUTER_API_KEY"),
         api_base="https://openrouter.ai/api/v1"
     ),

@@ -25,7 +25,7 @@ mcp_bosque_tool = MCPToolset(
 # CORRECCIÓN: Pasa las herramientas directamente en el constructor
 root_agent = Agent(
     model=LiteLlm(
-        model="openrouter/meta-llama/llama-3.1-8b-instruct:free",
+        model="minimax/minimax-m2",
         api_key=os.getenv("OPENROUTER_API_KEY"),
         api_base="https://openrouter.ai/api/v1"
     ),
