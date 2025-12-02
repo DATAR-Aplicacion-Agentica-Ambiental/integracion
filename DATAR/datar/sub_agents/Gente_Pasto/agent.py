@@ -113,7 +113,7 @@ def generar_paisaje_sonoro(
     insectos_vol: int = 0,
     viento_vol: int = 0,
     tinguas_vol: int = 0,
-    duracion_seg: int = 12,
+    duracion_seg: int = 10,
     efectos: bool = True
 ) -> str:
     """
@@ -124,7 +124,7 @@ def generar_paisaje_sonoro(
     - insectos_vol: volumen de los insectos (dB)
     - viento_vol: volumen del viento (dB)
     - tinguas_vol: volumen de tinguas (dB)
-    - duracion_seg: duración total del mix en segundos
+    - duracion_seg: duración total del mix en segundos (máximo 10 segundos)
     - efectos: si aplica efectos artísticos aleatorios
 
     Retorna:
@@ -137,6 +137,9 @@ def generar_paisaje_sonoro(
     El agente debe:
     - Usar la herramienta para crear sonidos muy diferentes cada vez. 
     """
+    # Limitar la duración máxima a 10 segundos
+    duracion_seg = min(duracion_seg, 10)
+    
     capas = []
     errores = []
 
