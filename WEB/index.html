@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="{DATAR} - Laboratorio de experimentación con datos ambientales basados en la orquestación de agentes autónomos">
+    <title>{DATAR} - Sistema Agéntico Ambiental</title>
+    <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+    <!-- Header -->
+    <header class="header">
+        <div class="container">
+            <h1 class="header__title" id="header-agent-name">Sistema de Agentes {DATAR}</h1>
+            <p class="header__subtitle">Datos Ambientales Territoriales Abiertos Relacionados</p>
+            <p class="header__description">
+                Sistema de agentes autónomos para la Estructura Ecológica Principal de Bogotá
+            </p>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="main">
+        <div class="container">
+            <!-- Introducción -->
+            <section class="intro">
+                <h2 class="section-title">¿Qué es {DATAR}?</h2>
+                <p>
+                    <strong>{DATAR}</strong> es un laboratorio de experimentación transdisciplinar con
+                    <strong>datos ambientales abiertos</strong>, utilizando <strong>agentes autónomos impulsados por LLMs</strong>.
+                </p>
+                <p>
+                    El sistema genera una comprensión más situada y vivencial de la
+                    <strong>Estructura Ecológica Principal (EEP)</strong> de Bogotá.
+                </p>
+            </section>
+
+            <!-- Agentes Disponibles (OCULTO - Sistema usa auto-orquestación) -->
+            <section class="agents-section" style="display: none;">
+                <h2 class="section-title">Agentes Disponibles</h2>
+                <p class="section-description">
+                    Selecciona un agente con el que deseas interactuar.
+                    Cada agente tiene especialidades únicas para ayudarte a explorar los datos ambientales.
+                </p>
+
+                <!-- Grid de Agentes -->
+                <div id="agents-grid" class="agents-grid">
+                    <!-- Los agentes se cargarán dinámicamente con JavaScript -->
+                    <div class="loading">Cargando agentes...</div>
+                </div>
+            </section>
+
+            <!-- Área de Chat -->
+            <div id="chat-container" class="chat-container">
+                <div class="chat-header">
+                    <h3 id="chat-title" class="chat-title">Chat con Agente</h3>
+                </div>
+
+                <div id="chat-messages" class="chat-messages" style="display: none;">
+                    <button class="chat-close" onclick="closeChat()" title="Cerrar chat">&times;</button>
+                    <!-- Los mensajes se cargarán aquí dinámicamente -->
+                </div>
+
+                <div class="chat-input-container">
+                    <input type="file" id="file-input" class="file-input" accept="image/*,video/*,audio/*,.pdf,.doc,.docx" multiple style="display: none;">
+                    <button id="attach-button" class="chat-attach-btn" onclick="attachFiles()" title="Adjuntar archivos multimedia">
+                        📎
+                    </button>
+                    <textarea
+                        id="chat-input"
+                        class="chat-input"
+                        placeholder="Arrastra aquí las imagenes o texto. Incluso algún emoji 😉"
+                        rows="1"
+                    ></textarea>
+                    <button id="send-button" class="chat-send-btn" onclick="sendMessage()">
+                        ➤
+                    </button>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- Footer -->
+    <footer class="footer">
+        <div class="container">
+            <p>
+                {DATAR} - Sistema Agéntico Ambiental ·
+                Estructura Ecológica Principal de Bogotá · 2025
+            </p>
+        </div>
+    </footer>
+
+    <!-- JavaScript -->
+    <script src="js/app.js"></script>
+</body>
+</html>
