@@ -74,26 +74,7 @@ logs/
 *.bak
 *.swp
 
-# Claude Code
-CLAUDE.md
-.claude/
+# OSMnx cache (datos de OpenStreetMap descargados)
+DATAR/cache/
+cache/
 
-# Google Cloud Deployment (CRÍTICO - Contiene API keys)
-app.yaml
-.gcloudignore
-
-# Outputs generados por agentes (se crean en runtime)
-WEB/outputs/*
-!WEB/outputs/.gitkeep
-DATAR/datar/sub_agents/Gente_Bosque/cartografias/*.html
-DATAR/datar/sub_agents/Gente_Intuitiva/imagenes_generadas/*.png
-DATAR/datar/sub_agents/Gente_Sonora/output/*.png
-DATAR/datar/sub_agents/Gente_Sonora/output/*.wav
-DATAR/datar/sub_agents/Gente_Sonora/output/*.mp3
-DATAR/datar/sub_agents/Gente_Pasto/output/*
-
-# Docker
-.dockerignore
-
-# Archivos de deployment con secretos
-DEPLOY.md

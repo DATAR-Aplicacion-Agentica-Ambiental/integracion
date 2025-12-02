@@ -57,3 +57,7 @@ elevation>=1.1.3
 rioxarray>=0.18.2
 rasterio>=1.4.3
 ipython>=9.0.0
+tqdm>=4.65.0  # Requerido por prettymaps
+pyproj>=3.5.0  # Requerido por geopandas
+pyogrio>=0.7.2  # Requerido por geopandas
+xarray>=2024.7.0  # Requerido por rioxarray
