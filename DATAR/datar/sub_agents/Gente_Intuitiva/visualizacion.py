@@ -217,6 +217,7 @@ def interpretar_texto_a_parametros(texto: str) -> dict:
         'amplitud_onda': max(0.1, consonantes / 15),  # Más consonantes = más amplitud base
         'num_puntos': max(300, longitud * 15),  # Más texto = más puntos totales para detalle
         'semilla': semilla,
+        'signos_pregunta': signos_pregunta,  # Incluir para uso en línea 430
     }
 
 

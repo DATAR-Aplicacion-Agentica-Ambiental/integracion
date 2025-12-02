@@ -140,8 +140,8 @@ def inferir_especies(descripcion: str) -> str:
         ])
     if condiciones["noche"]:
         especies_sugeridas.extend([
-            "Insectos: Polilla bruja (Ascalapha odorata)"
-            "Arácnidos: opiliones "
+            "Insectos: Polilla bruja (Ascalapha odorata)",
+            "Arácnidos: opiliones ",
             "Microorganismos del suelo - Bacterias (Pseudomonas, Acinetobacter,Pedomicrobium), hongos (Glomus, Acaulospora), protozoos (amebas,Chlamidomonas, Euglen )",
 
         
