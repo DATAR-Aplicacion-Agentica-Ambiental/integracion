@@ -14,6 +14,13 @@ try:
 except ImportError:
     MATPLOTLIB_AVAILABLE = False
 
+# Importar scipy solo si está disponible
+try:
+    from scipy.io import wavfile
+    SCIPY_AVAILABLE = True
+except ImportError:
+    SCIPY_AVAILABLE = False
+
 def log_uso(funcion, tipo):
     """Guarda registro de cada función usada."""
     timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
@@ -232,21 +239,27 @@ def generar_ascii_morse(sonido: str) -> str:
 
 def generar_composicion_sonido(especificaciones: str) -> str:
     """
-    Genera una composición de sonido con numpy basada en especificaciones.
+    Genera una composición de sonido con numpy basada en especificaciones y la guarda como archivo MP3.
+    Crea composiciones ricas con múltiples capas de sonido (fondo ambiental, aves, variaciones).
     
     Args:
-        especificaciones: Especificaciones del sonido (p.ej., "frecuencia: 440, duración: 2")
+        especificaciones: Especificaciones del sonido (p.ej., "frecuencia: 440, duración: 2, tipo: humedal")
+                        Tipos soportados: "humedal", "bosque", "agua", "viento", o "simple" para tono básico
     
     Returns:
-        Información sobre la composición de sonido generada
+        Información sobre la composición de sonido generada y ruta del archivo guardado
     """
     log_uso(especificaciones, "composición de sonido")
     
     try:
         # Parámetros por defecto
         sample_rate = 44100  # Hz
-        duracion = 2  # segundos
+        duracion = 10  # segundos
         frecuencia = 440  # Hz (La4)
+        tipo_sonido = "humedal"  # Tipo por defecto: composición rica
+        
+        # Limitar duración máxima a 10 segundos
+        duracion_maxima = 10
         
         # Intentar extraer parámetros de la especificación
         spec_lower = especificaciones.lower()
@@ -265,33 +278,185 @@ def generar_composicion_sonido(especificaciones: str) -> str:
                 import re
                 match = re.search(r'duraci[óo]n[:\s]*(\d+\.?\d*)', spec_lower)
                 if match:
-                    duracion = float(match.group(1))
+                    duracion = min(float(match.group(1)), duracion_maxima)  # Limitar a máximo 10 segundos
             except:
                 pass
         
-        # Generar forma de onda
-        tiempo = np.linspace(0, duracion, int(sample_rate * duracion), False)
-        onda = np.sin(2 * np.pi * frecuencia * tiempo)
+        # Detectar tipo de sonido
+        if "tipo:" in spec_lower:
+            import re
+            match = re.search(r'tipo[:\s]*(\w+)', spec_lower)
+            if match:
+                tipo_sonido = match.group(1).lower()
+        elif any(tipo in spec_lower for tipo in ["humedal", "bosque", "agua", "viento", "simple"]):
+            for tipo in ["humedal", "bosque", "agua", "viento", "simple"]:
+                if tipo in spec_lower:
+                    tipo_sonido = tipo
+                    break
         
-        # Normalizar
-        onda = onda * 32767 / np.max(np.abs(onda))
-        onda = onda.astype(np.int16)
+        # Generar tiempo
+        tiempo = np.linspace(0, duracion, int(sample_rate * duracion), False)
+        
+        # Generar composición según el tipo
+        if tipo_sonido == "simple":
+            # Tono simple (comportamiento original)
+            onda = np.sin(2 * np.pi * frecuencia * tiempo)
+            audio_data = onda
+        else:
+            # Composiciones ricas con múltiples capas
+            audio_data = np.zeros_like(tiempo)
+            
+            if tipo_sonido == "humedal":
+                # Fondo de agua suave (amplitudes aumentadas)
+                water_noise = np.random.normal(0, 0.15, tiempo.shape) * np.exp(-tiempo/duracion * 0.3)
+                water_hum = 0.15 * np.sin(2 * np.pi * 30 * tiempo)
+                # Filtro simple paso bajo
+                filtered_noise = np.zeros_like(water_noise)
+                for i in range(1, len(water_noise)):
+                    filtered_noise[i] = 0.05 * water_noise[i] - 0.95 * filtered_noise[i-1]
+                audio_data += water_hum + filtered_noise * 0.5
+                
+                # Sonidos de aves (múltiples llamadas) - amplitudes aumentadas
+                num_birds = max(2, int(duracion / 2))
+                for i in range(num_birds):
+                    start_time = np.random.uniform(0.3, duracion - 0.5)
+                    duration_bird = np.random.uniform(0.2, 0.4)
+                    idx_start = int(start_time * sample_rate)
+                    idx_end = min(int((start_time + duration_bird) * sample_rate), len(tiempo))
+                    if idx_end > idx_start:
+                        bird_freq = np.random.uniform(800, 2000)
+                        mod_freq = np.random.uniform(3, 8)
+                        t_bird = tiempo[idx_start:idx_end]
+                        freq_modulated = bird_freq + 200 * np.sin(2 * np.pi * mod_freq * t_bird)
+                        bird_sound = 0.4 * np.sin(2 * np.pi * freq_modulated * t_bird)
+                        # Envolvente hanning
+                        envelope = np.hanning(len(bird_sound))
+                        audio_data[idx_start:idx_end] += bird_sound * envelope
+                
+                # Croar de rana ocasional - amplitudes aumentadas
+                if duracion > 2:
+                    num_croaks = max(1, int(duracion / 3))
+                    for _ in range(num_croaks):
+                        start_time = np.random.uniform(0.5, duracion - 0.3)
+                        idx_start = int(start_time * sample_rate)
+                        idx_end = min(int((start_time + 0.2) * sample_rate), len(tiempo))
+                        if idx_end > idx_start:
+                            frog_sound = 0.3 * np.sin(2 * np.pi * 300 * tiempo[idx_start:idx_end])
+                            envelope = np.hanning(len(frog_sound))
+                            audio_data[idx_start:idx_end] += frog_sound * envelope
+                            
+            elif tipo_sonido == "bosque":
+                # Fondo de viento en hojas - amplitudes aumentadas
+                wind_noise = np.random.normal(0, 0.12, tiempo.shape) * (0.5 + 0.5 * np.sin(2 * np.pi * 0.3 * tiempo))
+                audio_data += wind_noise
+                
+                # Pájaros del bosque (trinos más complejos) - amplitudes aumentadas
+                num_birds = max(2, int(duracion / 1.5))
+                for i in range(num_birds):
+                    start_time = np.random.uniform(0.2, duracion - 0.6)
+                    duration_bird = np.random.uniform(0.4, 0.8)
+                    idx_start = int(start_time * sample_rate)
+                    idx_end = min(int((start_time + duration_bird) * sample_rate), len(tiempo))
+                    if idx_end > idx_start:
+                        base_freq = np.random.uniform(1000, 3000)
+                        t_bird = tiempo[idx_start:idx_end]
+                        # Trino con múltiples frecuencias
+                        bird_sound = (0.35 * np.sin(2 * np.pi * base_freq * t_bird) +
+                                    0.15 * np.sin(2 * np.pi * base_freq * 2 * t_bird) +
+                                    0.1 * np.sin(2 * np.pi * base_freq * 3 * t_bird))
+                        envelope = np.hanning(len(bird_sound))
+                        audio_data[idx_start:idx_end] += bird_sound * envelope
+                        
+            elif tipo_sonido == "agua":
+                # Agua corriente - amplitudes aumentadas
+                water_noise = np.random.normal(0, 0.2, tiempo.shape)
+                water_tone = 0.2 * np.sin(2 * np.pi * 50 * tiempo)
+                # Filtro paso bajo más pronunciado
+                filtered_water = np.zeros_like(water_noise)
+                for i in range(1, len(water_noise)):
+                    filtered_water[i] = 0.08 * water_noise[i] - 0.92 * filtered_water[i-1]
+                audio_data += water_tone + filtered_water * 0.7
+                
+            elif tipo_sonido == "viento":
+                # Viento variable - amplitudes aumentadas
+                wind_base = np.random.normal(0, 0.15, tiempo.shape)
+                wind_modulation = 0.15 * np.sin(2 * np.pi * 0.2 * tiempo)
+                # Variación de intensidad
+                intensity = 0.5 + 0.5 * np.sin(2 * np.pi * 0.15 * tiempo)
+                audio_data += (wind_base + wind_modulation) * intensity
+        
+        # Normalizar el audio con volumen adecuado
+        max_val = np.max(np.abs(audio_data))
+        if max_val > 0:
+            # Normalizar a un rango audible (0.8 para dejar algo de headroom)
+            audio_data = audio_data / max_val * 0.8
+        else:
+            # Si no hay audio, generar un tono de prueba para evitar silencio
+            audio_data = 0.3 * np.sin(2 * np.pi * 440 * tiempo)
+        
+        # Crear directorio de salida si no existe
+        output_dir = os.path.join(os.path.dirname(__file__), "output")
+        os.makedirs(output_dir, exist_ok=True)
+        
+        # Generar nombre de archivo con timestamp
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        nombre_base = f"composicion_sonido_{timestamp}"
+        
+        # Guardar el archivo de audio
+        ruta_archivo = None
+        
+        if not SCIPY_AVAILABLE:
+            return "❌ Error: Se requiere 'scipy' para guardar archivos de audio. Instala con: pip install scipy"
+        
+        try:
+            # Asegurar que el audio esté en el rango correcto [-1, 1]
+            audio_data = np.clip(audio_data, -1.0, 1.0)
+            
+            # Convertir a int16 para WAV temporal (rango: -32768 a 32767)
+            audio_int16 = (audio_data * 32767).astype(np.int16)
+            
+            # Intentar exportar a MP3 usando pydub
+            try:
+                from pydub import AudioSegment
+                
+                # Primero guardar como WAV temporal
+                archivo_wav_temp = os.path.join(output_dir, f"{nombre_base}_temp.wav")
+                wavfile.write(archivo_wav_temp, sample_rate, audio_int16)
+                
+                # Convertir WAV a MP3
+                audio_segment = AudioSegment.from_wav(archivo_wav_temp)
+                ruta_archivo = os.path.join(output_dir, f"{nombre_base}.mp3")
+                audio_segment.export(ruta_archivo, format="mp3", bitrate="192k")
+                
+                # Eliminar archivo temporal
+                os.remove(archivo_wav_temp)
+                
+            except ImportError:
+                # Si pydub no está disponible, guardar como WAV
+                ruta_archivo = os.path.join(output_dir, f"{nombre_base}.wav")
+                wavfile.write(ruta_archivo, sample_rate, audio_int16)
+                
+        except Exception as e:
+            return f"❌ Error al guardar archivo de audio: {str(e)}"
+        
+        tipo_display = tipo_sonido.capitalize() if tipo_sonido != "simple" else "Tono simple"
         
         salida = f"""
 🎼 Composición de sonido generada:
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 📊 Especificaciones:
-   • Frecuencia: {frecuencia} Hz
+   • Tipo: {tipo_display}
    • Duración: {duracion} segundos
    • Sample Rate: {sample_rate} Hz
-   • Forma de onda: Senoidal
+   {"   • Frecuencia base: " + str(frecuencia) + " Hz" if tipo_sonido == "simple" else "   • Múltiples capas de sonido"}
 
-🔊 Propiedades de la onda:
-   • Amplitud máxima: {np.max(np.abs(onda))} (normalizado)
-   • Número de muestras: {len(onda)}
-   • RMS: {np.sqrt(np.mean(onda**2)):.2f}
+🔊 Propiedades del audio:
+   • Amplitud máxima: {np.max(np.abs(audio_data)):.4f} (normalizado)
+   • Número de muestras: {len(audio_data)}
+   • RMS: {np.sqrt(np.mean(audio_data**2)):.4f}
 
-✅ Composición lista para reproducción o guardado
+✅ Archivo guardado exitosamente
+📁 Ruta: {ruta_archivo}
         """
         
         return salida.strip()
