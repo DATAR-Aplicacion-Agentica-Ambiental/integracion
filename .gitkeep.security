@@ -1,0 +1,43 @@
+# IMPORTANTE: Archivos que NUNCA deben subirse a Git
+
+Este archivo es un recordatorio de seguridad.
+
+## Archivos críticos que contienen secretos:
+
+1. **app.yaml** - Contiene API keys de producción
+   - Usar: app.yaml.example como template
+   - Configurar las API keys reales localmente
+
+2. **API/.env** - Variables de entorno con credenciales
+   - Ya está en .gitignore
+   - Usar: API/.env.example como referencia
+
+3. **DEPLOY.md** - Puede contener información sensible de deployment
+   - Ya está en .gitignore
+
+## Verificar antes de commit:
+
+```bash
+# Ver qué archivos se van a subir
+git status
+
+# Verificar que no hay API keys
+git diff | grep -i "api.key\|secret\|password"
+
+# Ver archivos trackeados que no deberían estarlo
+git ls-files | grep -E "(\.env$|app\.yaml$)"
+```
+
+## Si subiste un secreto por error:
+
+```bash
+# Remover del historial (CUIDADO: esto reescribe el historio)
+git filter-branch --force --index-filter \
+  "git rm --cached --ignore-unmatch app.yaml" \
+  --prune-empty --tag-name-filter cat -- --all
+
+# Forzar push (solo si es tu repositorio personal)
+git push origin --force --all
+```
+
+Mejor aún: **Rotar las API keys inmediatamente** si se suben por error.
