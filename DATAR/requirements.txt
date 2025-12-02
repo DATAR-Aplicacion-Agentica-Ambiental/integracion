@@ -37,6 +37,15 @@ Pillow
 requests==2.32.4
 beautifulsoup4==4.13.4
 PyMuPDF  # proporciona el módulo `fitz`
-folium
 fastmcp
 mcp
+
+# Gente_Bosque - Cartografía con PrettyMaps
+# Nota: prettymaps se instala con --no-deps debido a conflictos de versiones
+# con numpy>=1.26. Funciona correctamente con numpy 2.x en la práctica.
+prettymaps>=1.4.2
+osmnx>=2.0.0
+shapely>=2.0.0
+geopandas>=1.0.1
+pandas>=1.4
+networkx>=2.5

@@ -214,7 +214,7 @@ def explorar(termino: str) -> str:
 
 def crear_mapa_emocional(descripcion: str) -> str:
     """
-    Genera un mapa emocional del Bosque La Macarena (Bogotá) utilizando la librería `folium`. 
+    Genera un mapa emocional del Bosque La Macarena (Bogotá) utilizando PrettyMaps. 
     A partir de una descripción textual, detecta una emoción o sensación asociada y aplica una 
     paleta de colores contrastante para representar visualmente ese estado emocional.
 
@@ -231,25 +231,146 @@ def crear_mapa_emocional(descripcion: str) -> str:
     """
     import os
     from datetime import datetime
-    import folium
-    import colorsys
+    import prettymaps
+    import matplotlib
+    matplotlib.use('Agg')  # Backend sin GUI para servidor
 
-    # Coordenadas fijas del Bosque de La Macarena
+    # Coordenadas fijas del Bosque de La Macarena (lat, lon)
     coordenadas = (4.614773, -74.063173)
 
-    # Paletas de colores por emoción
-    paletas = {
-        "serenidad": {"background": "#CDE8E5", "forest": "#2C6E49", "water": "#A7C7E7"},
-        "asombro": {"background": "#FFF1C1", "forest": "#8713D4", "water": "#73D2DE"},
-        "curiosidad": {"background": "#FAF3DD", "forest": "#0B6E4F", "water": "#3ABEFF"},
-        "contemplacion": {"background": "#E0CFCB", "forest": "#BB9DD6", "water": "#A7A6BA"},
-        "melancolia": {"background": "#C3B1E1", "forest": "#3A3D5C", "water": "#6C91BF"},
-        "vitalidad": {"background": "#FFE066", "forest": "#148D04", "water": "#0077B6"},
-        "frescura": {"background": "#C0FDFB", "forest": "#00A896", "water": "#028090"},
-        "alegria": {"background": "#FFF5B7", "forest": "#FF7B00", "water": "#F8DF00"}
+    # Estilos PrettyMaps por emoción
+    estilos_emocionales = {
+        "serenidad": {
+            "perimeter": {"fill": False, "lw": 0, "zorder": 0},
+            "streets": {
+                "fc": "#CDE8E5",
+                "ec": "#2C6E49",
+                "lw": 1.5,
+                "zorder": 3
+            },
+            "building": {
+                "palette": ["#A7C7E7", "#CDE8E5", "#2C6E49"],
+                "ec": "#2C6E49",
+                "lw": 0.5,
+                "zorder": 4
+            },
+            "background": "#CDE8E5"
+        },
+        "asombro": {
+            "perimeter": {"fill": False, "lw": 0, "zorder": 0},
+            "streets": {
+                "fc": "#FFF1C1",
+                "ec": "#8713D4",
+                "lw": 2,
+                "zorder": 3
+            },
+            "building": {
+                "palette": ["#73D2DE", "#FFF1C1", "#8713D4"],
+                "ec": "#8713D4",
+                "lw": 0.8,
+                "zorder": 4
+            },
+            "background": "#FFF1C1"
+        },
+        "curiosidad": {
+            "perimeter": {"fill": False, "lw": 0, "zorder": 0},
+            "streets": {
+                "fc": "#FAF3DD",
+                "ec": "#0B6E4F",
+                "lw": 1.5,
+                "zorder": 3
+            },
+            "building": {
+                "palette": ["#3ABEFF", "#FAF3DD", "#0B6E4F"],
+                "ec": "#0B6E4F",
+                "lw": 0.6,
+                "zorder": 4
+            },
+            "background": "#FAF3DD"
+        },
+        "contemplacion": {
+            "perimeter": {"fill": False, "lw": 0, "zorder": 0},
+            "streets": {
+                "fc": "#E0CFCB",
+                "ec": "#BB9DD6",
+                "lw": 1.2,
+                "zorder": 3
+            },
+            "building": {
+                "palette": ["#A7A6BA", "#E0CFCB", "#BB9DD6"],
+                "ec": "#BB9DD6",
+                "lw": 0.5,
+                "zorder": 4
+            },
+            "background": "#E0CFCB"
+        },
+        "melancolia": {
+            "perimeter": {"fill": False, "lw": 0, "zorder": 0},
+            "streets": {
+                "fc": "#C3B1E1",
+                "ec": "#3A3D5C",
+                "lw": 1.5,
+                "zorder": 3
+            },
+            "building": {
+                "palette": ["#6C91BF", "#C3B1E1", "#3A3D5C"],
+                "ec": "#3A3D5C",
+                "lw": 0.7,
+                "zorder": 4
+            },
+            "background": "#C3B1E1"
+        },
+        "vitalidad": {
+            "perimeter": {"fill": False, "lw": 0, "zorder": 0},
+            "streets": {
+                "fc": "#FFE066",
+                "ec": "#148D04",
+                "lw": 2,
+                "zorder": 3
+            },
+            "building": {
+                "palette": ["#0077B6", "#FFE066", "#148D04"],
+                "ec": "#148D04",
+                "lw": 0.8,
+                "zorder": 4
+            },
+            "background": "#FFE066"
+        },
+        "frescura": {
+            "perimeter": {"fill": False, "lw": 0, "zorder": 0},
+            "streets": {
+                "fc": "#C0FDFB",
+                "ec": "#00A896",
+                "lw": 1.5,
+                "zorder": 3
+            },
+            "building": {
+                "palette": ["#028090", "#C0FDFB", "#00A896"],
+                "ec": "#00A896",
+                "lw": 0.6,
+                "zorder": 4
+            },
+            "background": "#C0FDFB"
+        },
+        "alegria": {
+            "perimeter": {"fill": False, "lw": 0, "zorder": 0},
+            "streets": {
+                "fc": "#FFF5B7",
+                "ec": "#FF7B00",
+                "lw": 2,
+                "zorder": 3
+            },
+            "building": {
+                "palette": ["#F8DF00", "#FFF5B7", "#FF7B00"],
+                "ec": "#FF7B00",
+                "lw": 0.8,
+                "zorder": 4
+            },
+            "background": "#FFF5B7"
+        }
     }
 
-    # Palabras clave asociadas a emociones (coherentes con las paletas)
+    # Palabras clave asociadas a emociones
     claves = {
         # Serenidad
         "tranquilidad": "serenidad", "calma": "serenidad", "paz": "serenidad", "silencio": "serenidad",
@@ -283,37 +404,64 @@ def crear_mapa_emocional(descripcion: str) -> str:
             "Incluya palabras como: calma, curiosidad, nostalgia, energía, lluvia, sorpresa, felicidad, etc."
         )
 
-    paleta = paletas[emocion_detectada]
+    estilo = estilos_emocionales[emocion_detectada]
 
     try:
-        # Crear mapa con folium usando las coordenadas
-        mapa = folium.Map(
-            location=coordenadas,
-            zoom_start=14,
-            tiles="OpenStreetMap",
-            prefer_canvas=True
-        )
-        
-        # Agregar círculo coloreado representando la emoción
-        folium.Circle(
-            location=coordenadas,
-            radius=800,
-            popup=f"Emoción: {emocion_detectada}",
-            color=paleta["forest"],
-            fill=True,
-            fillColor=paleta["water"],
-            fillOpacity=0.6,
-            weight=2
-        ).add_to(mapa)
-
-        # Guarda los mapas dentro de Gente_Bosque/cartografias
+        # Crear directorio de cartografías si no existe
         base_dir = os.path.join(os.path.dirname(__file__), "cartografias")
         os.makedirs(base_dir, exist_ok=True)
 
-        filename = f"mapa_emocional_{emocion_detectada}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.html"
-        filepath = os.path.join(base_dir, filename)
+        # Generar mapa con PrettyMaps
+        # Radio de ~1000 metros alrededor del Bosque La Macarena
+        plot = prettymaps.plot(
+            coordenadas,
+            radius=1000,
+            figsize=(12, 12),
+            style=estilo,
+            layers={
+                "perimeter": {},
+                "streets": {
+                    "width": {
+                        "primary": 5,
+                        "secondary": 4,
+                        "tertiary": 3.5,
+                        "residential": 3,
+                        "pedestrian": 2.5,
+                        "footway": 2,
+                        "path": 2
+                    }
+                },
+                "building": {
+                    "tags": {"building": True}
+                }
+            }
+        )
 
-        mapa.save(filepath)
+        # Configurar color de fondo
+        plot.fig.patch.set_facecolor(estilo["background"])
+        
+        # Agregar título con la emoción
+        plot.ax.set_title(
+            f'Bosque La Macarena - {emocion_detectada.capitalize()}',
+            font='serif',
+            size=24,
+            pad=20
+        )
+
+        # Guardar como PNG
+        filename = f"mapa_emocional_{emocion_detectada}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.png"
+        filepath = os.path.join(base_dir, filename)
+        
+        plot.fig.savefig(
+            filepath,
+            dpi=150,
+            bbox_inches='tight',
+            facecolor=estilo["background"]
+        )
+
+        # Cerrar la figura para liberar memoria
+        import matplotlib.pyplot as plt
+        plt.close(plot.fig)
 
         return (
             f"Lugar: Bosque La Macarena (Bogotá)\n"
