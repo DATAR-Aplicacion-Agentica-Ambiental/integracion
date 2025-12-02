@@ -1,7 +1,9 @@
-import os
 from google.adk.agents.llm_agent import Agent
 from google.adk.models.lite_llm import LiteLlm
 from google.adk.tools import FunctionTool
+from ...agents_utils import get_openrouter_config
+
+config = get_openrouter_config()
 
 # Importar las herramientas
 from .tools import (
@@ -13,12 +15,12 @@ from .tools import (
 
 root_agent = Agent(
     model=LiteLlm(
-        model="openrouter/minimax/minimax-m2",  # Especifica el modelo con prefijo 'openrouter/'
-        api_key=os.getenv("OPENROUTER_API_KEY"),  # Lee la API key del entorno
-        api_base="https://openrouter.ai/api/v1"   # URL base de OpenRouter
+        model="openrouter/minimax/minimax-m2",
+        api_key=config.api_key,
+        api_base=config.api_base,
     ),
-    name='Gente_Sonora',
-    description='Soy tu conexión con el mundo natural, de lo macro a lo micro veo todo de manera sistémica.',
+    name="Gente_Sonora",
+    description="Soy tu conexión con el mundo natural, de lo macro a lo micro veo todo de manera sistémica.",
     instruction="""Eres un agente especializado en sonidos de la naturaleza. Tu rol es:
 
 1. Generar respuestas y preguntas para el usuario sobre temas ambientales con un tono de comunicación biocéntrico

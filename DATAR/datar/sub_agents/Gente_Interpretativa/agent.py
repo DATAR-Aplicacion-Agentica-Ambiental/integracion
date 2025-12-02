@@ -7,6 +7,7 @@ from google.adk.agents.llm_agent import Agent
 from google.adk.models.lite_llm import LiteLlm
 from google.adk.agents import ParallelAgent, SequentialAgent, LoopAgent
 from google.genai import types
+from ...agents_utils import get_openrouter_config
 
 from .utils import (
     leer_instrucciones, cambiar_respuesta_emojis, 
@@ -17,12 +18,14 @@ from .utils import (
 # Agentes paralelos
 # ==========
 
+config = get_openrouter_config()
+
 # Agente especializado en interpretar respuestas usando solo emojis
 agente_interprete_emojis = Agent(
     model=LiteLlm(
-        model="openrouter/minimax/minimax-m2",  # Especifica el modelo con prefijo 'openrouter/'
-        api_key=os.getenv("OPENROUTER_API_KEY"),  # Lee la API key del entorno
-        api_base="https://openrouter.ai/api/v1"   # URL base de OpenRouter
+        model="openrouter/minimax/minimax-m2",
+        api_key=config.api_key,
+        api_base=config.api_base,
     ),
     name='GenteInterpreteDeEmojis',
     description=(
@@ -41,9 +44,9 @@ agente_interprete_emojis = Agent(
 # y generando preguntas.
 agente_interprete_textual = Agent(
     model=LiteLlm(
-        model="openrouter/minimax/minimax-m2",  # Especifica el modelo con prefijo 'openrouter/'
-        api_key=os.getenv("OPENROUTER_API_KEY"),  # Lee la API key del entorno
-        api_base="https://openrouter.ai/api/v1"   # URL base de OpenRouter
+        model="openrouter/minimax/minimax-m2",
+        api_key=config.api_key,
+        api_base=config.api_base,
     ),
     name='GenteInterpreteDeTexto',
     description=(
@@ -72,9 +75,9 @@ agente_paralelizador = ParallelAgent(
 # Agente que combina las respuestas de los agentes paralelos
 agente_fusionador = Agent(
     model=LiteLlm(
-        model="openrouter/minimax/minimax-m2",  # Especifica el modelo con prefijo 'openrouter/'
-        api_key=os.getenv("OPENROUTER_API_KEY"),  # Lee la API key del entorno
-        api_base="https://openrouter.ai/api/v1"   # URL base de OpenRouter
+        model="openrouter/minimax/minimax-m2",
+        api_key=config.api_key,
+        api_base=config.api_base,
     ),
     name='GenteFusionador',
     description=(
@@ -102,9 +105,9 @@ agente_bucle = LoopAgent(
 # y les defina una forma de interactuar
 agente_re_interpretativa = Agent(
     model=LiteLlm(
-        model="openrouter/minimax/minimax-m2",  # Especifica el modelo con prefijo 'openrouter/'
-        api_key=os.getenv("OPENROUTER_API_KEY"),  # Lee la API key del entorno
-        api_base="https://openrouter.ai/api/v1"   # URL base de OpenRouter
+        model="openrouter/minimax/minimax-m2",
+        api_key=config.api_key,
+        api_base=config.api_base,
     ),
     name='GenteReInterpretativa',
     description=(
