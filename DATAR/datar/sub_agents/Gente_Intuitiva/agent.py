@@ -1,17 +1,15 @@
 import os
 import re
 from pathlib import Path
-from dotenv import load_dotenv
 from google.adk.agents.llm_agent import Agent
 from google.adk.models.lite_llm import LiteLlm
 from google.adk.agents.base_agent import AgentState
 from google.adk.tools import FunctionTool
 import google.genai.types as types
+from ...agents_utils import get_openrouter_config
 from .visualizacion import generar_rio_emocional, guardar_imagen_texto
 
-# Cargar variables de entorno desde .env en el directorio raíz
-env_path = Path(__file__).parent.parent / '.env'
-load_dotenv(dotenv_path=env_path)
+config = get_openrouter_config()
 
 # Almacenamiento de emojis e interpretaciones por sesión
 _emojis_conversacion = []
@@ -146,12 +144,12 @@ async def crear_imagen_rio_emocional() -> str:
 
 root_agent = Agent(
     model=LiteLlm(
-        model="openrouter/minimax/minimax-m2",  # Especifica el modelo con prefijo 'openrouter/'
-        api_key=os.getenv("OPENROUTER_API_KEY"),  # Lee la API key del entorno
-        api_base="https://openrouter.ai/api/v1"   # URL base de OpenRouter
+        model="openrouter/minimax/minimax-m2",
+        api_key=config.api_key,
+        api_base=config.api_base,
     ),
-    name='Gente_Intuitiva',
-    description='Eres un asistente que ayuda a identificar patrones del trazo o signo del pensamiento que se percibe en una interacción con el territorio',
+    name="Gente_Intuitiva",
+    description="Eres un asistente que ayuda a identificar patrones del trazo o signo del pensamiento que se percibe en una interacción con el territorio",
     instruction="""Eres un asistente que ayuda a identificar patrones del trazo o signo del pensamiento que se percibe en una interacción con el territorio.
 
 Imagina que a través del input, estamos interpretando el caminar del pensamiento de un río en cuerpo (el usuario) y como se relaciona o siente algo que percibe.

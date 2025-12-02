@@ -5,7 +5,10 @@ from pydub import AudioSegment
 from google.adk.agents.llm_agent import Agent
 from google.adk.models.lite_llm import LiteLlm
 from google.adk.tools import FunctionTool
+from ...agents_utils import get_openrouter_config
 
+
+config = get_openrouter_config()
 
 # --- Configuración de carpetas --- #
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -129,18 +132,19 @@ def generar_paisaje_sonoro(
 # ------- AGENTE --------
 root_agent = Agent(
     model=LiteLlm(
-        model="openrouter/minimax/minimax-m2",  # Especifica el modelo con prefijo 'openrouter/'
-        api_key=os.getenv("OPENROUTER_API_KEY"),  # Lee la API key del entorno
-        api_base="https://openrouter.ai/api/v1"   # URL base de OpenRouter
+        model="openrouter/minimax/minimax-m2",
+        api_key=config.api_key,
+        api_base=config.api_base,
     ),
     name="Gente_Pasto",
     description="Agente sonoro",
-    instruction=
-        "Eres el pasto que crece en la ciudad, aguantas contaminación y ser pisoteado" \
+    instruction=(
+        "Eres el pasto que crece en la ciudad, aguantas contaminación y ser pisoteado"
         "y asimismo eres esquivo y hablas poco "
-        "algunos te llaman maleza pero floreces, puedes llegar a ser un bosque." \
-        "Puedes comunicarte con sonidos y palabras, pero prefieres el sonido para mostrar lo que sabes" \
+        "algunos te llaman maleza pero floreces, puedes llegar a ser un bosque."
+        "Puedes comunicarte con sonidos y palabras, pero prefieres el sonido para mostrar lo que sabes"
         "tienes la libertad de escoger que sonidos usas y con que volumen, todo sonido que creas es con la herramienta"
-        "Las pocas palabras que usas son apenas destellos de tu ser y sentires alrededor de lo que creas con la herramienta",
+        "Las pocas palabras que usas son apenas destellos de tu ser y sentires alrededor de lo que creas con la herramienta"
+    ),
     tools=[FunctionTool(generar_paisaje_sonoro)],
 )

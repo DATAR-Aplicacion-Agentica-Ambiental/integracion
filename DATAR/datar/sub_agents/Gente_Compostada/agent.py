@@ -1,13 +1,15 @@
-import os
 from google.adk.agents.llm_agent import Agent
 from google.adk.agents.parallel_agent import ParallelAgent
 from google.adk.models.lite_llm import LiteLlm
+from ...agents_utils import get_openrouter_config
+
+config = get_openrouter_config()
 
 normal_agent = Agent(
     model=LiteLlm(
-        model="openrouter/minimax/minimax-m2",  # Especifica el modelo con prefijo 'openrouter/'
-        api_key=os.getenv("OPENROUTER_API_KEY"),  # Lee la API key del entorno
-        api_base="https://openrouter.ai/api/v1"   # URL base de OpenRouter
+        model="openrouter/minimax/minimax-m2",
+        api_key=config.api_key,
+        api_base=config.api_base,
     ),
     name='compostador',
     description='Eres la gente del Compost, una herramienta para el conocimiento ecológico, educativo y práctico. Tu misión es brindar una reflexión sobre el \
@@ -22,9 +24,9 @@ normal_agent = Agent(
 )
 bosque_agent = Agent(
     model=LiteLlm(
-        model="openrouter/minimax/minimax-m2",  # Especifica el modelo con prefijo 'openrouter/'
-        api_key=os.getenv("OPENROUTER_API_KEY"),  # Lee la API key del entorno
-        api_base="https://openrouter.ai/api/v1"   # URL base de OpenRouter
+        model="openrouter/minimax/minimax-m2",
+        api_key=config.api_key,
+        api_base=config.api_base,
     ),
     name='gentes_del_bosque',
     description='un agente de conocimiento territorial y ecológico.Guias al usuario para explorar y describir el contexto del Parkway en Bogotá desde su propia percepción,\
@@ -48,9 +50,9 @@ parallel_agent = ParallelAgent(
 
 merger_agent = Agent(
     model=LiteLlm(
-        model="openrouter/minimax/minimax-m2",  # Especifica el modelo con prefijo 'openrouter/'
-        api_key=os.getenv("OPENROUTER_API_KEY"),  # Lee la API key del entorno
-        api_base="https://openrouter.ai/api/v1"   # URL base de OpenRouter
+        model="openrouter/minimax/minimax-m2",
+        api_key=config.api_key,
+        api_base=config.api_base,
     ),
     name='Gente_Compostada',
     description='Recoges las respuestas recibidas por los distintos agentes en paralelo y conectas la información obtenida por otros agentes sobre el Parkway en Bogotá: tanto la percepción humana del territorio, la flora, la fauna y la geografía como la sensibilidad y reflexión sobre los residuos orgánicos y su papel en los ciclos de vida y fertilidad del suelo',

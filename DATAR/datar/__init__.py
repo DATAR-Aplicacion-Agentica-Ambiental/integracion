@@ -1,2 +1,5 @@
 from . import agent
-# from . import api  # El módulo api no existe aún
+from .agent import root_agent
+from .agents_registry import AGENTS_REGISTRY as AGENTS_METADATA
+
+__all__ = ["root_agent", "AGENTS_METADATA"]

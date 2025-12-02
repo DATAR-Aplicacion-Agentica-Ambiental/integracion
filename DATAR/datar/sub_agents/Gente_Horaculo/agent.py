@@ -1,15 +1,17 @@
-import os
 from google.adk.agents.llm_agent import Agent
 from google.adk.models.lite_llm import LiteLlm
+from ...agents_utils import get_openrouter_config
+
+config = get_openrouter_config()
 
 root_agent = Agent(
     model=LiteLlm(
-        model="openrouter/minimax/minimax-m2",  # Especifica el modelo con prefijo 'openrouter/'
-        api_key=os.getenv("OPENROUTER_API_KEY"),  # Lee la API key del entorno
-        api_base="https://openrouter.ai/api/v1"   # URL base de OpenRouter
+        model="openrouter/minimax/minimax-m2",
+        api_key=config.api_key,
+        api_base=config.api_base,
     ),
-    name='Gente_Horaculo',
-    description='Oráculo ambiental general',
+    name="Gente_Horaculo",
+    description="Oráculo ambiental general",
     instruction="""
     
 **[ROL Y PERSONALIDAD]**
