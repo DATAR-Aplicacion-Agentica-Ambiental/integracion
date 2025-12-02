@@ -38,10 +38,12 @@ env/
 *~
 .DS_Store
 
-# Environment variables
+# Environment variables (CRÍTICO - NO SUBIR API KEYS)
 .env
 .env.local
 .env.*.local
+API/.env
+**/**.env
 
 # Jupyter Notebook
 .ipynb_checkpoints
