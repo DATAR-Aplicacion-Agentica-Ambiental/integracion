@@ -2,6 +2,7 @@ import os
 from datetime import datetime
 from random import randint, choice
 from pydub import AudioSegment
+from pydub.exceptions import CouldntDecodeError
 from google.adk.agents.llm_agent import Agent
 from google.adk.models.lite_llm import LiteLlm
 from google.adk.tools import FunctionTool
@@ -18,20 +19,62 @@ os.makedirs(OUTPUT_DIR, exist_ok=True)
 
 # --- Archivos de sonido locales --- #
 ARCHIVOS_SONIDOS = {
-    "pajaros": "bird-bogota.wav",
-    "insectos": "insect.wav",
-    "viento": "wind.wav",
-    "tinguas": "tinguas.wav"
+    "pajaros": "aves-IAvH-CSA-6297.mp3",
+    "pajaros_2": "aves-IAvH-CSA-962.mp3",
+    "insectos": None,  # No disponible en MP3
+    "viento": None,    # No disponible en MP3
+    "tinguas": None    # No disponible en MP3
 }
 
 # --- Funciones de audio --- #
 
-def cargar_sonido(nombre_archivo: str, volumen_db: int = 0) -> AudioSegment:
+def cargar_sonido(nombre_archivo: str, volumen_db: int = 0, formato: str = None) -> AudioSegment:
     """
     Carga un audio desde la carpeta SOUNDS_DIR y ajusta su volumen.
+    
+    Args:
+        nombre_archivo: Nombre del archivo de audio (MP3, WAV, etc.)
+        volumen_db: Ajuste de volumen en decibelios
+        formato: Formato del archivo (opcional, se detecta automáticamente si es None)
+                 Ejemplos: "mp3", "wav", "m4a"
+    
+    Returns:
+        AudioSegment con el volumen ajustado
+    
+    Raises:
+        FileNotFoundError: Si el archivo no existe
+        CouldntDecodeError: Si el archivo no se puede decodificar
     """
     path = os.path.join(SOUNDS_DIR, nombre_archivo)
-    audio = AudioSegment.from_file(path)
+    
+    # Verificar que el archivo existe
+    if not os.path.exists(path):
+        raise FileNotFoundError(
+            f"No se encontró el archivo de audio: {nombre_archivo} en {SOUNDS_DIR}"
+        )
+    
+    # Detectar formato si no se especifica
+    if formato is None:
+        _, ext = os.path.splitext(nombre_archivo)
+        formato = ext.lstrip('.').lower() if ext else None
+    
+    try:
+        if formato:
+            audio = AudioSegment.from_file(path, format=formato)
+        else:
+            audio = AudioSegment.from_file(path)
+    except CouldntDecodeError as e:
+        raise CouldntDecodeError(
+            f"Error al decodificar el archivo {nombre_archivo}. "
+            f"El archivo puede estar corrupto o en un formato no soportado. "
+            f"Formato detectado: {formato}. "
+            f"Error original: {str(e)}"
+        ) from e
+    except Exception as e:
+        raise RuntimeError(
+            f"Error inesperado al cargar el archivo {nombre_archivo}: {str(e)}"
+        ) from e
+    
     return audio + volumen_db
 
 def cambiar_velocidad(audio: AudioSegment, factor: float) -> AudioSegment:
@@ -70,7 +113,7 @@ def generar_paisaje_sonoro(
     insectos_vol: int = 0,
     viento_vol: int = 0,
     tinguas_vol: int = 0,
-    duracion_seg: int = 12,
+    duracion_seg: int = 10,
     efectos: bool = True
 ) -> str:
     """
@@ -81,7 +124,7 @@ def generar_paisaje_sonoro(
     - insectos_vol: volumen de los insectos (dB)
     - viento_vol: volumen del viento (dB)
     - tinguas_vol: volumen de tinguas (dB)
-    - duracion_seg: duración total del mix en segundos
+    - duracion_seg: duración total del mix en segundos (máximo 10 segundos)
     - efectos: si aplica efectos artísticos aleatorios
 
     Retorna:
@@ -94,16 +137,52 @@ def generar_paisaje_sonoro(
     El agente debe:
     - Usar la herramienta para crear sonidos muy diferentes cada vez. 
     """
+    # Limitar la duración máxima a 10 segundos
+    duracion_seg = min(duracion_seg, 10)
+    
     capas = []
+    errores = []
 
     if pajaros_vol != 0:
-        capas.append(cargar_sonido(ARCHIVOS_SONIDOS["pajaros"], pajaros_vol))
+        if ARCHIVOS_SONIDOS["pajaros"]:
+            try:
+                capas.append(cargar_sonido(ARCHIVOS_SONIDOS["pajaros"], pajaros_vol))
+            except Exception as e:
+                errores.append(f"pájaros: {str(e)}")
+        else:
+            errores.append("pájaros: archivo no disponible")
+    
     if insectos_vol != 0:
-        capas.append(cargar_sonido(ARCHIVOS_SONIDOS["insectos"], insectos_vol))
+        if ARCHIVOS_SONIDOS["insectos"]:
+            try:
+                capas.append(cargar_sonido(ARCHIVOS_SONIDOS["insectos"], insectos_vol))
+            except Exception as e:
+                errores.append(f"insectos: {str(e)}")
+        else:
+            errores.append("insectos: archivo no disponible")
+    
     if viento_vol != 0:
-        capas.append(cargar_sonido(ARCHIVOS_SONIDOS["viento"], viento_vol))
+        if ARCHIVOS_SONIDOS["viento"]:
+            try:
+                capas.append(cargar_sonido(ARCHIVOS_SONIDOS["viento"], viento_vol))
+            except Exception as e:
+                errores.append(f"viento: {str(e)}")
+        else:
+            errores.append("viento: archivo no disponible")
+    
     if tinguas_vol != 0:
-        capas.append(cargar_sonido(ARCHIVOS_SONIDOS["tinguas"], tinguas_vol))
+        if ARCHIVOS_SONIDOS["tinguas"]:
+            try:
+                capas.append(cargar_sonido(ARCHIVOS_SONIDOS["tinguas"], tinguas_vol))
+            except Exception as e:
+                errores.append(f"tinguas: {str(e)}")
+        else:
+            errores.append("tinguas: archivo no disponible")
+    
+    # Si hay errores, informarlos pero continuar si hay al menos una capa válida
+    if errores:
+        mensaje_error = f"Advertencia: No se pudieron cargar algunos sonidos: {', '.join(errores)}"
+        print(mensaje_error)
 
     if not capas:
         raise ValueError("No se seleccionó ningún sonido para mezclar.")
