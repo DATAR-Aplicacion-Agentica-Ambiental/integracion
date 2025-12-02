@@ -231,9 +231,12 @@ def crear_mapa_emocional(descripcion: str) -> str:
     """
     import os
     from datetime import datetime
+    import warnings
     import prettymaps
     import matplotlib
     matplotlib.use('Agg')  # Backend sin GUI para servidor
+    # Suprimir advertencia de plt.show() en modo no interactivo
+    warnings.filterwarnings('ignore', category=UserWarning, message='.*FigureCanvasAgg is non-interactive.*')
 
     # Coordenadas fijas del Bosque de La Macarena (lat, lon)
     coordenadas = (4.614773, -74.063173)
@@ -404,7 +407,11 @@ def crear_mapa_emocional(descripcion: str) -> str:
             "Incluya palabras como: calma, curiosidad, nostalgia, energía, lluvia, sorpresa, felicidad, etc."
         )
 
-    estilo = estilos_emocionales[emocion_detectada]
+    estilo_completo = estilos_emocionales[emocion_detectada]
+    
+    # Separar el estilo de PrettyMaps del color de fondo
+    estilo_prettymaps = {k: v for k, v in estilo_completo.items() if k != "background"}
+    color_fondo = estilo_completo["background"]
 
     try:
         # Crear directorio de cartografías si no existe
@@ -417,7 +424,7 @@ def crear_mapa_emocional(descripcion: str) -> str:
             coordenadas,
             radius=1000,
             figsize=(12, 12),
-            style=estilo,
+            style=estilo_prettymaps,
             layers={
                 "perimeter": {},
                 "streets": {
@@ -438,7 +445,7 @@ def crear_mapa_emocional(descripcion: str) -> str:
         )
 
         # Configurar color de fondo
-        plot.fig.patch.set_facecolor(estilo["background"])
+        plot.fig.patch.set_facecolor(color_fondo)
         
         # Agregar título con la emoción
         plot.ax.set_title(
@@ -456,7 +463,7 @@ def crear_mapa_emocional(descripcion: str) -> str:
             filepath,
             dpi=150,
             bbox_inches='tight',
-            facecolor=estilo["background"]
+            facecolor=color_fondo
         )
 
         # Cerrar la figura para liberar memoria
