@@ -91,7 +91,7 @@ def generar_sonido_humedal(exportar=True, reproducir=True):
 def exportar_audio(audio_data, samplerate):
     """
     Exporta el audio generado a formato MP3 en el escritorio.
-    Si pydub no está disponible, exporta a WAV.
+    Requiere pydub y ffmpeg para generar archivos MP3.
     
     Args:
         audio_data (numpy.ndarray): Datos de audio a exportar
@@ -113,15 +113,26 @@ def exportar_audio(audio_data, samplerate):
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     nombre_base = f"humedal_conejera_{timestamp}"
     
+    # Crear directorio temporal para archivos WAV temporales
+    temp_dir = os.path.join(os.path.dirname(__file__), "temp")
+    os.makedirs(temp_dir, exist_ok=True)
+    
     # Convertir audio a int16 para guardarlo
     audio_int16 = np.int16(audio_data * 32767)
     
     try:
-        # Intentar exportar a MP3 usando pydub
-        from pydub import AudioSegment
+        # Intentar exportar a MP3 usando pydub (requerido)
+        try:
+            from pydub import AudioSegment
+        except ImportError:
+            print("❌ Error: Se requiere 'pydub' para generar archivos MP3.")
+            print("  Instalación: pip install pydub")
+            print("  También necesitas tener ffmpeg instalado en tu sistema.")
+            print("  FFmpeg: https://ffmpeg.org/download.html")
+            return
         
-        # Primero guardar como WAV temporal
-        archivo_wav_temp = os.path.join(escritorio, f"{nombre_base}_temp.wav")
+        # Primero guardar como WAV temporal en directorio separado
+        archivo_wav_temp = os.path.join(temp_dir, f"{nombre_base}_temp.wav")
         wavfile.write(archivo_wav_temp, samplerate, audio_int16)
         
         # Convertir WAV a MP3
@@ -133,15 +144,6 @@ def exportar_audio(audio_data, samplerate):
         os.remove(archivo_wav_temp)
         
         print(f"✓ Audio exportado exitosamente a: {archivo_mp3}")
-        
-    except ImportError:
-        # Si pydub no está disponible, guardar como WAV
-        archivo_wav = os.path.join(escritorio, f"{nombre_base}.wav")
-        wavfile.write(archivo_wav, samplerate, audio_int16)
-        
-        print(f"✓ Audio exportado como WAV (instala 'pydub' y 'ffmpeg' para MP3): {archivo_wav}")
-        print("  Instalación: pip install pydub")
-        print("  FFmpeg: https://ffmpeg.org/download.html")
         
     except Exception as e:
         print(f"✗ Error al exportar audio: {e}")
