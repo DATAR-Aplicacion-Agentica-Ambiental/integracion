@@ -22,12 +22,13 @@ python-dotenv>=1.0.0
 google-genai==1.47.0
 
 # Sebastian1022 - Agente Sonido (Herramientas de audio, gráficos y composición)
-numpy>=1.26
-scipy>=1.11
+# Forzar versiones con wheels precompilados para ARM64 Linux
+numpy>=1.26,<3.0
+scipy>=1.12
 matplotlib>=3.9.0  # Gráficos sin interfaz GUI (backend Agg)
 sounddevice>=0.4.8
 pydub>=0.25.1
-audioop-lts>=0.2.2  # Reemplazo de audioop para Python 3.13+
+# audioop-lts>=0.2.2  # Solo necesario para Python 3.13+ (audioop viene incluido en Python 3.12)
 
 # M4r1l1
 python-dotenv
@@ -41,15 +42,16 @@ fastmcp
 mcp
 
 # Gente_Bosque - Cartografía con PrettyMaps
-# Nota: prettymaps requiere osmnx < 2.0 para funcionar correctamente
-prettymaps>=1.4.2
+# Nota: prettymaps tiene restricciones de numpy muy antiguas (numpy<1.25)
+# Se instala separadamente con --no-deps en el Dockerfile
+# prettymaps>=1.4.2  # COMENTADO - se instala manualmente
 osmnx>=1.9.3,<2.0
 shapely>=2.0.0
 geopandas>=1.0.1
 pandas>=1.4
 networkx>=2.5
-opencv-python>=4.11.0
-vsketch>=1.0.0
+opencv-python-headless>=4.11.0  # Usar headless para servidor sin GUI
+# vsketch>=1.0.0  # COMENTADO - requiere glcontext/X11 que no funciona en Cloud Run
 scikit-image>=0.25.2
 scikit-learn>=1.6.1
 thefuzz>=0.22.1
