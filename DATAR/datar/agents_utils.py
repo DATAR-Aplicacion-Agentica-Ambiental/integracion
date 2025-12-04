@@ -1,6 +1,7 @@
 import os
 import warnings
 from dataclasses import dataclass
+from pathlib import Path
 from typing import Optional
 
 from dotenv import load_dotenv
@@ -47,8 +48,23 @@ def load_env_if_needed() -> None:
     Esta función es segura de llamar múltiples veces; load_dotenv
     solo complementa lo que ya está en el entorno sin sobrescribir
     valores existentes por defecto.
+    
+    Siempre busca el archivo .env en la raíz del proyecto DATAR
+    (donde está el directorio 'datar').
     """
-    load_dotenv(override=False)
+    # Busca el .env en la raíz del proyecto DATAR
+    # Navega desde datar/agents_utils.py hacia arriba hasta encontrar DATAR/
+    current_file = Path(__file__).resolve()
+    datar_root = current_file.parent.parent  # Sube de datar/agents_utils.py a DATAR/
+    env_file = datar_root / ".env"
+    
+    if env_file.exists():
+        load_dotenv(dotenv_path=env_file, override=False)
+    else:
+        # Si no existe, intenta también en el directorio padre (por si DATAR está dentro de otro proyecto)
+        parent_env = datar_root.parent / ".env"
+        if parent_env.exists():
+            load_dotenv(dotenv_path=parent_env, override=False)
 
 
 def get_openrouter_config(
@@ -75,14 +91,23 @@ def get_openrouter_config(
     load_env_if_needed()
 
     key = os.getenv(OPENROUTER_API_KEY_ENV) or ""
+    # Eliminar espacios en blanco al inicio y final
+    key = key.strip()
     base = api_base or OPENROUTER_API_BASE_DEFAULT
 
-    if require_key and not key:
-        raise ConfigError(
-            f"No se encontró la variable de entorno {OPENROUTER_API_KEY_ENV}. "
-            "Configura tu clave de OpenRouter en un archivo .env o en el entorno "
-            "antes de iniciar los agentes DATAR."
-        )
+    if require_key:
+        # Determinar dónde se buscó el .env para el mensaje de error
+        current_file = Path(__file__).resolve()
+        datar_root = current_file.parent.parent
+        env_file = datar_root / ".env"
+        
+        if not key:
+            error_msg = (
+                f"No se encontró la variable de entorno {OPENROUTER_API_KEY_ENV}. "
+                f"Configura tu clave de OpenRouter en un archivo .env en: {env_file} "
+                "o en el entorno antes de iniciar los agentes DATAR."
+            )
+            raise ConfigError(error_msg)
 
     return OpenRouterConfig(api_key=key, api_base=base)
 

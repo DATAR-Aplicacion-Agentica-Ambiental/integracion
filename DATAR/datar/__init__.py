@@ -23,7 +23,7 @@ warnings.filterwarnings(
 )
 
 from . import agent
-from .agent import root_agent
+from .agent import app
 from .agents_registry import AGENTS_REGISTRY as AGENTS_METADATA
 
-__all__ = ["root_agent", "AGENTS_METADATA"]
+__all__ = ["app", "AGENTS_METADATA"]

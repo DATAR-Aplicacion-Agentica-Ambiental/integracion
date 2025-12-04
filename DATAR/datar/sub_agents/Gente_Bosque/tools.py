@@ -214,7 +214,7 @@ def explorar(termino: str) -> str:
 
 def crear_mapa_emocional(descripcion: str) -> str:
     """
-    Genera un mapa emocional del Bosque La Macarena (Bogotá) utilizando PrettyMaps. 
+    Genera un mapa emocional del Bosque La Macarena (Bogotá) usando osmnx + geopandas + matplotlib.
     A partir de una descripción textual, detecta una emoción o sensación asociada y aplica una 
     paleta de colores contrastante para representar visualmente ese estado emocional.
 
@@ -232,16 +232,21 @@ def crear_mapa_emocional(descripcion: str) -> str:
     import os
     from datetime import datetime
     import warnings
-    import prettymaps
     import matplotlib
     matplotlib.use('Agg')  # Backend sin GUI para servidor
-    # Suprimir advertencia de plt.show() en modo no interactivo
-    warnings.filterwarnings('ignore', category=UserWarning, message='.*FigureCanvasAgg is non-interactive.*')
+    import matplotlib.pyplot as plt
+    import osmnx as ox
+    import geopandas as gpd
+    
+    # Suprimir advertencias
+    warnings.filterwarnings('ignore', category=UserWarning)
+    ox.settings.use_cache = True  # Usar cache para mejorar rendimiento
+    ox.settings.log_console = False  # Reducir logs
 
     # Coordenadas fijas del Bosque de La Macarena (lat, lon)
     coordenadas = (4.614773, -74.063173)
 
-    # Estilos PrettyMaps por emoción
+    # Estilos emocionales para mapas (colores y paletas)
     estilos_emocionales = {
         "serenidad": {
             "perimeter": {"fill": False, "lw": 0, "zorder": 0},
@@ -408,58 +413,130 @@ def crear_mapa_emocional(descripcion: str) -> str:
         )
 
     estilo_completo = estilos_emocionales[emocion_detectada]
-    
-    # Separar el estilo de PrettyMaps del color de fondo
-    estilo_prettymaps = {k: v for k, v in estilo_completo.items() if k != "background"}
     color_fondo = estilo_completo["background"]
+    estilo_calles = estilo_completo["streets"]
+    estilo_edificios = estilo_completo["building"]
 
     try:
         # Crear directorio de cartografías si no existe
         base_dir = os.path.join(os.path.dirname(__file__), "cartografias")
         os.makedirs(base_dir, exist_ok=True)
 
-        # Generar mapa con PrettyMaps
         # Radio de ~1000 metros alrededor del Bosque La Macarena
-        plot = prettymaps.plot(
+        distancia = 1000  # metros
+        
+        # Obtener red de calles usando osmnx
+        G = ox.graph_from_point(
             coordenadas,
-            radius=1000,
-            figsize=(12, 12),
-            style=estilo_prettymaps,
-            layers={
-                "perimeter": {},
-                "streets": {
-                    "width": {
-                        "primary": 5,
-                        "secondary": 4,
-                        "tertiary": 3.5,
-                        "residential": 3,
-                        "pedestrian": 2.5,
-                        "footway": 2,
-                        "path": 2
-                    }
-                },
-                "building": {
-                    "tags": {"building": True}
-                }
-            }
+            dist=distancia,
+            network_type='all',
+            simplify=True
         )
-
-        # Configurar color de fondo
-        plot.fig.patch.set_facecolor(color_fondo)
+        
+        # Convertir grafo a GeoDataFrame de calles
+        gdf_calles = ox.graph_to_gdfs(G, nodes=False, edges=True)
+        gdf_calles = gdf_calles.to_crs('EPSG:4326')
+        
+        # Obtener edificios
+        tags = {'building': True}
+        gdf_edificios = ox.features_from_point(
+            coordenadas,
+            dist=distancia,
+            tags=tags
+        )
+        
+        # Crear figura de matplotlib
+        fig, ax = plt.subplots(figsize=(12, 12), facecolor=color_fondo)
+        
+        # Definir grosores de línea por tipo de calle
+        width_map = {
+            'primary': 5,
+            'secondary': 4,
+            'tertiary': 3.5,
+            'residential': 3,
+            'pedestrian': 2.5,
+            'footway': 2,
+            'path': 2
+        }
+        
+        # Dibujar calles
+        color_calle_fill = estilo_calles.get("fc", "#FFFFFF")
+        color_calle_edge = estilo_calles.get("ec", "#000000")
+        ancho_linea_base = estilo_calles.get("lw", 1.5)
+        
+        # Dibujar todas las calles de una vez
+        if not gdf_calles.empty:
+            # Crear columna de ancho basado en tipo de calle
+            def obtener_ancho(row):
+                highway_value = row.get('highway', 'residential') if hasattr(row, 'get') else row
+                if isinstance(highway_value, list):
+                    tipo = highway_value[0] if highway_value else 'residential'
+                elif highway_value is None:
+                    tipo = 'residential'
+                else:
+                    tipo = str(highway_value)
+                return width_map.get(tipo, 2) * ancho_linea_base / 3
+            
+            # Aplicar función de ancho
+            if 'highway' in gdf_calles.columns:
+                gdf_calles['linewidth'] = gdf_calles.apply(obtener_ancho, axis=1)
+            else:
+                gdf_calles['linewidth'] = ancho_linea_base
+            
+            gdf_calles.plot(
+                ax=ax,
+                color=color_calle_fill,
+                edgecolor=color_calle_edge,
+                linewidth=gdf_calles['linewidth'],
+                zorder=3
+            )
+        
+        # Dibujar edificios con paleta de colores
+        if not gdf_edificios.empty and len(gdf_edificios) > 0:
+            paleta = estilo_edificios.get("palette", ["#CCCCCC"])
+            color_edificio_edge = estilo_edificios.get("ec", "#000000")
+            ancho_edificio_edge = estilo_edificios.get("lw", 0.5)
+            
+            # Asignar colores alternando entre los de la paleta
+            num_edificios = len(gdf_edificios)
+            colores_edificios = [paleta[i % len(paleta)] for i in range(num_edificios)]
+            
+            gdf_edificios.plot(
+                ax=ax,
+                color=colores_edificios,
+                edgecolor=color_edificio_edge,
+                linewidth=ancho_edificio_edge,
+                zorder=4
+            )
+        
+        # Configurar límites del mapa
+        if not gdf_calles.empty:
+            bounds = gdf_calles.total_bounds
+            ax.set_xlim(bounds[0], bounds[2])
+            ax.set_ylim(bounds[1], bounds[3])
+        else:
+            # Fallback: usar buffer alrededor del punto central
+            buffer_deg = distancia / 111000  # Conversión aproximada de metros a grados
+            ax.set_xlim(coordenadas[1] - buffer_deg, coordenadas[1] + buffer_deg)
+            ax.set_ylim(coordenadas[0] - buffer_deg, coordenadas[0] + buffer_deg)
+        
+        ax.set_aspect('equal')
+        ax.axis('off')
         
         # Agregar título con la emoción
-        plot.ax.set_title(
+        ax.set_title(
             f'Bosque La Macarena - {emocion_detectada.capitalize()}',
-            font='serif',
-            size=24,
-            pad=20
+            fontfamily='serif',
+            fontsize=24,
+            pad=20,
+            color='#333333'
         )
 
         # Guardar como PNG
         filename = f"mapa_emocional_{emocion_detectada}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.png"
         filepath = os.path.join(base_dir, filename)
         
-        plot.fig.savefig(
+        fig.savefig(
             filepath,
             dpi=150,
             bbox_inches='tight',
@@ -467,8 +544,7 @@ def crear_mapa_emocional(descripcion: str) -> str:
         )
 
         # Cerrar la figura para liberar memoria
-        import matplotlib.pyplot as plt
-        plt.close(plot.fig)
+        plt.close(fig)
 
         return (
             f"Lugar: Bosque La Macarena (Bogotá)\n"

@@ -14,7 +14,7 @@ def generar_sonido_humedal(exportar=True, reproducir=True):
     Incluye sonidos de agua, aves y un ambiente general.
     
     Args:
-        exportar (bool): Si es True, exporta el audio a MP3
+        exportar (bool): Si es True, exporta el audio a WAV
         reproducir (bool): Si es True, reproduce el audio
     
     Returns:
@@ -74,7 +74,7 @@ def generar_sonido_humedal(exportar=True, reproducir=True):
     # Normalizar el audio para evitar saturación
     audio_data = audio_data / np.max(np.abs(audio_data)) * 0.6
 
-    # Exportar a archivo MP3
+    # Exportar a archivo WAV
     if exportar:
         exportar_audio(audio_data, samplerate)
 
@@ -90,8 +90,8 @@ def generar_sonido_humedal(exportar=True, reproducir=True):
 
 def exportar_audio(audio_data, samplerate):
     """
-    Exporta el audio generado a formato MP3 en el escritorio.
-    Requiere pydub y ffmpeg para generar archivos MP3.
+    Exporta el audio generado a formato WAV en el escritorio.
+    Usa scipy para exportar directamente a WAV sin necesidad de ffmpeg.
     
     Args:
         audio_data (numpy.ndarray): Datos de audio a exportar
@@ -113,37 +113,14 @@ def exportar_audio(audio_data, samplerate):
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     nombre_base = f"humedal_conejera_{timestamp}"
     
-    # Crear directorio temporal para archivos WAV temporales
-    temp_dir = os.path.join(os.path.dirname(__file__), "temp")
-    os.makedirs(temp_dir, exist_ok=True)
-    
     # Convertir audio a int16 para guardarlo
     audio_int16 = np.int16(audio_data * 32767)
     
     try:
-        # Intentar exportar a MP3 usando pydub (requerido)
-        try:
-            from pydub import AudioSegment
-        except ImportError:
-            print("❌ Error: Se requiere 'pydub' para generar archivos MP3.")
-            print("  Instalación: pip install pydub")
-            print("  También necesitas tener ffmpeg instalado en tu sistema.")
-            print("  FFmpeg: https://ffmpeg.org/download.html")
-            return
-        
-        # Primero guardar como WAV temporal en directorio separado
-        archivo_wav_temp = os.path.join(temp_dir, f"{nombre_base}_temp.wav")
-        wavfile.write(archivo_wav_temp, samplerate, audio_int16)
-        
-        # Convertir WAV a MP3
-        audio_segment = AudioSegment.from_wav(archivo_wav_temp)
-        archivo_mp3 = os.path.join(escritorio, f"{nombre_base}.mp3")
-        audio_segment.export(archivo_mp3, format="mp3", bitrate="192k")
-        
-        # Eliminar archivo temporal
-        os.remove(archivo_wav_temp)
-        
-        print(f"✓ Audio exportado exitosamente a: {archivo_mp3}")
+        # Exportar directamente a WAV usando scipy
+        archivo_wav = os.path.join(escritorio, f"{nombre_base}.wav")
+        wavfile.write(archivo_wav, samplerate, audio_int16)
+        print(f"✓ Audio exportado exitosamente a: {archivo_wav}")
         
     except Exception as e:
         print(f"✗ Error al exportar audio: {e}")

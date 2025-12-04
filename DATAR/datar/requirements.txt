@@ -1,0 +1,61 @@
+# Google ADK - Agent Development Kit
+# Requiere v1.14.0+ para soporte de App class
+google-adk>=1.14.0
+
+# LiteLLM
+litellm>=1.63.1
+
+# FastAPI - Framework web
+fastapi>=0.104.0
+
+# Uvicorn - Servidor ASGI
+uvicorn>=0.24.0
+
+# Pydantic - Validación de datos
+pydantic>=2.0.0
+
+# Para desarrollo (opcional pero recomendado)
+python-multipart>=0.0.6
+httpx>=0.25.0
+python-dotenv>=1.0.0
+
+# GuatilaM
+google-genai==1.47.0
+
+# Sebastian1022 - Agente Sonido (Herramientas de audio, gráficos y composición)
+# Forzar versiones con wheels precompilados para ARM64 Linux
+numpy>=1.26,<3.0
+scipy>=1.12
+matplotlib>=3.9.0  # Gráficos sin interfaz GUI (backend Agg)
+# audioop-lts>=0.2.2  # Solo necesario para Python 3.13+ (audioop viene incluido en Python 3.12)
+
+# M4r1l1
+python-dotenv
+Pillow
+
+# Lina Puerto
+requests==2.32.4
+beautifulsoup4==4.13.4
+PyMuPDF  # proporciona el módulo `fitz`
+fastmcp
+mcp
+
+# Gente_Bosque - Cartografía emocional usando osmnx + geopandas + matplotlib
+# Solución simplificada compatible con Cloud Run (sin dependencias GUI como PrettyMaps/vsketch)
+osmnx>=1.9.3,<2.0
+shapely>=2.0.0
+geopandas>=1.0.1
+pandas>=1.4
+networkx>=2.5
+opencv-python-headless>=4.11.0  # Usar headless para servidor sin GUI
+scikit-image>=0.25.2
+scikit-learn>=1.6.1
+thefuzz>=0.22.1
+elevation>=1.1.3
+rioxarray>=0.18.2
+rasterio>=1.4.3
+ipython>=9.0.0
+tqdm>=4.65.0
+pyproj>=3.5.0  # Requerido por geopandas
+pyogrio>=0.7.2  # Requerido por geopandas
+xarray>=2024.7.0  # Requerido por rioxarray

@@ -22,6 +22,7 @@ warnings.filterwarnings(
 )
 
 from google.adk.agents.llm_agent import Agent
+from google.adk.apps import App
 from google.adk.models.lite_llm import LiteLlm
 from .agents_utils import get_openrouter_config
 from .sub_agents.Gente_Montaña.agent import root_agent as Gente_Montaña
@@ -35,6 +36,7 @@ from .sub_agents.Gente_Compostada.agent import root_agent as Gente_Compostada
 
 config = get_openrouter_config()
 
+# Crear el agente raíz (variable interna)
 root_agent = Agent(
     model=LiteLlm(
         model="openrouter/minimax/minimax-m2",
@@ -54,4 +56,10 @@ root_agent = Agent(
         Gente_Horaculo,
         Gente_Compostada,
     ],
+)
+
+# Crear el objeto App para Cloud Run y API Server
+app = App(
+    name="datar_integraciones",
+    root_agent=root_agent,
 )
