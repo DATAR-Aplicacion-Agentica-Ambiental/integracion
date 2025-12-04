@@ -418,9 +418,6 @@ def crear_mapa_emocional(descripcion: str) -> str:
     estilo_edificios = estilo_completo["building"]
 
     try:
-        # Crear directorio de cartografías si no existe
-        base_dir = os.path.join(os.path.dirname(__file__), "cartografias")
-        os.makedirs(base_dir, exist_ok=True)
 
         # Radio de ~1000 metros alrededor del Bosque La Macarena
         distancia = 1000  # metros
@@ -532,47 +529,65 @@ def crear_mapa_emocional(descripcion: str) -> str:
             color='#333333'
         )
 
-        # Guardar como PNG
+        # Generar nombre de archivo
         filename = f"mapa_emocional_{emocion_detectada}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.png"
-        filepath = os.path.join(base_dir, filename)
         
-        fig.savefig(
-            filepath,
-            dpi=150,
-            bbox_inches='tight',
-            facecolor=color_fondo
-        )
-        
-        # Cerrar la figura para liberar memoria
-        plt.close(fig)
-
-        # Intentar subir el PNG a Cloud Storage
+        # Usar archivo temporal que se eliminará después de subir
+        import tempfile
         url_gcs = None
         error_gcs = None
+        
         try:
-            from ... import storage_utils
+            # Crear archivo temporal
+            with tempfile.NamedTemporaryFile(suffix='.png', delete=False) as temp_file:
+                ruta_temp = temp_file.name
+                fig.savefig(
+                    ruta_temp,
+                    dpi=150,
+                    bbox_inches='tight',
+                    facecolor=color_fondo
+                )
+            
+            # Cerrar la figura para liberar memoria
+            plt.close(fig)
 
-            destino_gcs = f"gente_bosque/cartografias/{filename}"
-            url_gcs = storage_utils.upload_file_to_gcs(
-                filepath,
-                destino_gcs,
-                content_type="image/png",
-            )
+            # Intentar subir el PNG a Cloud Storage
+            try:
+                from ... import storage_utils
+
+                destino_gcs = f"gente_bosque/cartografias/{filename}"
+                url_gcs = storage_utils.upload_file_to_gcs(
+                    ruta_temp,
+                    destino_gcs,
+                    content_type="image/png",
+                )
+                
+                # Eliminar archivo temporal después de subir
+                try:
+                    os.unlink(ruta_temp)
+                except:
+                    pass  # Ignorar errores al eliminar temporal
+                    
+            except Exception as e:
+                error_gcs = str(e)
+                # Intentar eliminar temporal incluso si falló la subida
+                try:
+                    if 'ruta_temp' in locals():
+                        os.unlink(ruta_temp)
+                except:
+                    pass
         except Exception as e:
+            plt.close(fig)
             error_gcs = str(e)
         
         mensaje = (
             f"Lugar: Bosque La Macarena (Bogotá)\n"
             f"Emoción interpretada: {emocion_detectada}\n"
-            f"Archivo generado (local): {filepath}\n"
         )
         if url_gcs:
-            mensaje += f"URL Cloud Storage: {url_gcs}"
+            mensaje += f"🌐 URL Cloud Storage: {url_gcs}"
         else:
-            mensaje += (
-                "No se pudo subir a Cloud Storage"
-                + (f" ({error_gcs})" if error_gcs else "")
-            )
+            mensaje += f"⚠️ No se pudo subir a Cloud Storage: {error_gcs if error_gcs else 'Error desconocido'}"
 
         return mensaje
 

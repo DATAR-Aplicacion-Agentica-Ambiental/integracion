@@ -395,16 +395,13 @@ def generar_composicion_sonido(especificaciones: str) -> str:
             # Si no hay audio, generar un tono de prueba para evitar silencio
             audio_data = 0.3 * np.sin(2 * np.pi * 440 * tiempo)
         
-        # Crear directorio de salida si no existe
-        output_dir = os.path.join(os.path.dirname(__file__), "output")
-        os.makedirs(output_dir, exist_ok=True)
-        
         # Generar nombre de archivo con timestamp
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
         nombre_base = f"composicion_sonido_{timestamp}"
+        nombre_archivo = f"{nombre_base}.wav"
         
-        # Guardar el archivo de audio
-        ruta_archivo = None
+        # Usar archivo temporal que se eliminará después de subir
+        import tempfile
         url_gcs = None
         error_gcs = None
         
@@ -418,22 +415,36 @@ def generar_composicion_sonido(especificaciones: str) -> str:
             # Convertir a int16 para WAV (rango: -32768 a 32767)
             audio_int16 = (audio_data * 32767).astype(np.int16)
             
-            # Exportar directamente a WAV usando scipy
-            ruta_archivo = os.path.join(output_dir, f"{nombre_base}.wav")
-            wavfile.write(ruta_archivo, sample_rate, audio_int16)
+            # Crear archivo temporal
+            with tempfile.NamedTemporaryFile(suffix='.wav', delete=False) as temp_file:
+                ruta_temp = temp_file.name
+                wavfile.write(ruta_temp, sample_rate, audio_int16)
 
             # Intentar subir a Cloud Storage
             try:
                 from ... import storage_utils
 
-                destino_gcs = f"gente_sonora/audio/{os.path.basename(ruta_archivo)}"
+                destino_gcs = f"gente_sonora/audio/{nombre_archivo}"
                 url_gcs = storage_utils.upload_file_to_gcs(
-                    ruta_archivo,
+                    ruta_temp,
                     destino_gcs,
                     content_type="audio/wav",
                 )
+                
+                # Eliminar archivo temporal después de subir
+                try:
+                    os.unlink(ruta_temp)
+                except:
+                    pass  # Ignorar errores al eliminar temporal
+                    
             except Exception as e:
                 error_gcs = str(e)
+                # Intentar eliminar temporal incluso si falló la subida
+                try:
+                    if 'ruta_temp' in locals():
+                        os.unlink(ruta_temp)
+                except:
+                    pass
                 
         except Exception as e:
             return f"❌ Error al guardar archivo de audio: {str(e)}"
@@ -454,10 +465,13 @@ def generar_composicion_sonido(especificaciones: str) -> str:
    • Número de muestras: {len(audio_data)}
    • RMS: {np.sqrt(np.mean(audio_data**2)):.4f}
 
-✅ Archivo guardado exitosamente
-📁 Ruta local: {ruta_archivo}
-{"🌐 URL Cloud Storage: " + url_gcs if url_gcs else "⚠️ No se pudo subir a Cloud Storage" + (f" ({error_gcs})" if error_gcs else "")}
+✅ Archivo subido a Cloud Storage
         """
+        
+        if url_gcs:
+            salida += f"\n🌐 URL Cloud Storage: {url_gcs}"
+        else:
+            salida += f"\n⚠️ No se pudo subir a Cloud Storage: {error_gcs if error_gcs else 'Error desconocido'}"
         
         return salida.strip()
     

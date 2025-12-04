@@ -318,35 +318,51 @@ def generar_paisaje_sonoro(
     if efectos:
         mezcla = aplicar_efectos_artistico(mezcla, sample_rate)
 
-    # Guardar el archivo
+    # Generar nombre de archivo y subir directamente a Cloud Storage
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     nombre_archivo = f"paisaje_sonoro_{timestamp}.wav"
-    ruta_archivo = os.path.join(OUTPUT_DIR, nombre_archivo)
-    exportar_wav(mezcla, sample_rate, ruta_archivo)
-
-    # Intentar subir a Cloud Storage
+    
+    # Usar archivo temporal que se eliminará después de subir
+    import tempfile
     url_gcs = None
     error_gcs = None
+    
     try:
         from ... import storage_utils
-
+        
+        # Crear archivo temporal
+        with tempfile.NamedTemporaryFile(suffix='.wav', delete=False) as temp_file:
+            ruta_temp = temp_file.name
+            exportar_wav(mezcla, sample_rate, ruta_temp)
+        
+        # Subir a Cloud Storage
         destino_gcs = f"gente_pasto/audio/{nombre_archivo}"
         url_gcs = storage_utils.upload_file_to_gcs(
-            ruta_archivo,
+            ruta_temp,
             destino_gcs,
             content_type="audio/wav",
         )
+        
+        # Eliminar archivo temporal después de subir
+        try:
+            os.unlink(ruta_temp)
+        except:
+            pass  # Ignorar errores al eliminar temporal
+            
     except Exception as e:
         error_gcs = str(e)
+        # Intentar eliminar temporal incluso si falló la subida
+        try:
+            if 'ruta_temp' in locals():
+                os.unlink(ruta_temp)
+        except:
+            pass
 
-    mensaje = (
-        "Paisaje sonoro generado.\n"
-        f"📁 Archivo local: {ruta_archivo}\n"
-    )
+    mensaje = "Paisaje sonoro generado.\n"
     if url_gcs:
         mensaje += f"🌐 URL Cloud Storage: {url_gcs}"
     else:
-        mensaje += "⚠️ No se pudo subir a Cloud Storage"
+        mensaje += f"⚠️ No se pudo subir a Cloud Storage: {error_gcs if error_gcs else 'Error desconocido'}"
         if error_gcs:
             mensaje += f" ({error_gcs})"
 

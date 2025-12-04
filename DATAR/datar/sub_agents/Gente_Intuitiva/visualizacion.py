@@ -492,39 +492,46 @@ def guardar_imagen_texto(texto: str) -> str:
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     nombre_archivo = f"trazo_{timestamp}.png"
 
-    # Determinar ruta de guardado
-    proyecto_root = FilePath(__file__).parent
-    carpeta_imagenes = proyecto_root / "imagenes_generadas"
-    carpeta_imagenes.mkdir(exist_ok=True)
-
-    ruta_completa = carpeta_imagenes / nombre_archivo
-
-    # Guardar imagen
-    imagen.save(ruta_completa, 'PNG')
-
-    # Intentar subir a Cloud Storage
+    # Usar archivo temporal que se eliminará después de subir
+    import tempfile
     url_gcs = None
     error_gcs = None
+    
     try:
-        from ... import storage_utils
+        # Crear archivo temporal
+        with tempfile.NamedTemporaryFile(suffix='.png', delete=False) as temp_file:
+            ruta_temp = temp_file.name
+            imagen.save(ruta_temp, 'PNG')
+        
+        # Intentar subir a Cloud Storage
+        try:
+            from ... import storage_utils
 
-        destino_gcs = f"gente_intuitiva/imagenes/{nombre_archivo}"
-        url_gcs = storage_utils.upload_file_to_gcs(
-            str(ruta_completa),
-            destino_gcs,
-            content_type="image/png",
-        )
+            destino_gcs = f"gente_intuitiva/imagenes/{nombre_archivo}"
+            url_gcs = storage_utils.upload_file_to_gcs(
+                ruta_temp,
+                destino_gcs,
+                content_type="image/png",
+            )
+            
+            # Eliminar archivo temporal después de subir
+            try:
+                os.unlink(ruta_temp)
+            except:
+                pass  # Ignorar errores al eliminar temporal
+                
+        except Exception as e:
+            error_gcs = str(e)
+            # Intentar eliminar temporal incluso si falló la subida
+            try:
+                if 'ruta_temp' in locals():
+                    os.unlink(ruta_temp)
+            except:
+                pass
     except Exception as e:
         error_gcs = str(e)
 
     if url_gcs:
-        return (
-            f"Imagen generada y guardada localmente en: {ruta_completa}\n"
-            f"URL Cloud Storage: {url_gcs}"
-        )
+        return f"🌐 URL Cloud Storage: {url_gcs}"
 
-    return (
-        f"Imagen generada y guardada localmente en: {ruta_completa}\n"
-        f"No se pudo subir a Cloud Storage"
-        + (f" ({error_gcs})" if error_gcs else "")
-    )
+    return f"⚠️ No se pudo subir a Cloud Storage: {error_gcs if error_gcs else 'Error desconocido'}"
