@@ -151,7 +151,7 @@ Crear o actualizar una sesión:
 
 ```bash
 curl -X POST -H "Authorization: Bearer $TOKEN" \
-    $APP_URL/apps/datar-integraciones/users/user_123/sessions/session_abc \
+    $APP_URL/apps/datar_integraciones/users/user_123/sessions/session_abc \
     -H "Content-Type: application/json" \
     -d '{"preferred_language": "es", "visit_count": 1}'
 ```
@@ -163,7 +163,7 @@ curl -X POST -H "Authorization: Bearer $TOKEN" \
     $APP_URL/run_sse \
     -H "Content-Type: application/json" \
     -d '{
-    "app_name": "datar-integraciones",
+    "app_name": "datar_integraciones",
     "user_id": "user_123",
     "session_id": "session_abc",
     "new_message": {
