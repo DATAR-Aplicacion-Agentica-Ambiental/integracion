@@ -1,0 +1,21 @@
+# Configuración de ADK para despliegue en Cloud Run
+# Este archivo referencia una imagen Docker personalizada en Artifact Registry que incluye ffmpeg
+
+app_name: "datar_integraciones"
+agent_path: "."
+
+# Configuración de despliegue en Cloud Run
+deploy:
+  cloud_run:
+    service_name: "datar-integraciones"
+    # image: referencia a la imagen en Artifact Registry
+    image: "southamerica-east1-docker.pkg.dev/datar-476419/datar-images/datar-integraciones:latest"
+    with_ui: true
+    # api: true  # Habilitado por defecto
+    # a2a: true  # Habilitado por defecto
+
+# Nota: 
+# 1. Primero construye y sube la imagen usando los comandos en el README
+# 2. Luego actualiza la línea "image:" arriba con la URL completa de tu imagen
+# 3. Las variables GOOGLE_CLOUD_PROJECT y GOOGLE_CLOUD_LOCATION se pueden pasar como variables de entorno
+

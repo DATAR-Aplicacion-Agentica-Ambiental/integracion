@@ -149,10 +149,64 @@ echo -n "nueva-clave-aqui" | gcloud secrets versions add OPENROUTER_API_KEY \
   --data-file=-
 ```
 
+#### Construir y subir imagen Docker a Artifact Registry
+
+**⚠️ IMPORTANTE**: Antes de desplegar, necesitas construir la imagen Docker personalizada (que incluye `ffmpeg`) y subirla a Artifact Registry.
+
+**1. Configurar variables y crear repositorio:**
+
+```bash
+cd DATAR/datar
+
+# Cargar variables desde .env
+export GOOGLE_CLOUD_PROJECT=$(grep GOOGLE_CLOUD_PROJECT ../.env | cut -d '=' -f2)
+export GOOGLE_CLOUD_LOCATION=$(grep GOOGLE_CLOUD_LOCATION ../.env | cut -d '=' -f2)
+export REPOSITORY_NAME="datar-images"  # Nombre del repositorio en Artifact Registry
+export IMAGE_NAME="datar-integraciones"
+export IMAGE_TAG="latest"
+```
+
+**2. Crear repositorio en Artifact Registry (solo la primera vez):**
+
+```bash
+gcloud artifacts repositories create $REPOSITORY_NAME \
+  --repository-format=docker \
+  --location=$GOOGLE_CLOUD_LOCATION \
+  --project=$GOOGLE_CLOUD_PROJECT || echo "Repositorio ya existe"
+```
+
+**3. Configurar autenticación para Docker:**
+
+```bash
+gcloud auth configure-docker ${GOOGLE_CLOUD_LOCATION}-docker.pkg.dev
+```
+
+**4. Construir la imagen Docker (AMD64 para Cloud Run):**
+
+```bash
+# Importante: usar --platform linux/amd64 para compatibilidad con Cloud Run
+docker build --platform linux/amd64 -t ${GOOGLE_CLOUD_LOCATION}-docker.pkg.dev/${GOOGLE_CLOUD_PROJECT}/${REPOSITORY_NAME}/${IMAGE_NAME}:${IMAGE_TAG} .
+```
+
+**5. Subir la imagen a Artifact Registry:**
+
+```bash
+docker push ${GOOGLE_CLOUD_LOCATION}-docker.pkg.dev/${GOOGLE_CLOUD_PROJECT}/${REPOSITORY_NAME}/${IMAGE_NAME}:${IMAGE_TAG}
+```
+
+**6. Actualizar `adk.yaml` con la URL de la imagen:**
+
+Edita `DATAR/datar/adk.yaml` y actualiza la línea `image:` con la URL completa:
+
+```yaml
+image: "southamerica-east1-docker.pkg.dev/datar-476419/datar-images/datar-integraciones:latest"
+```
+
 #### Comando de despliegue
 
 **Importante**: 
 - El comando `adk deploy cloud_run` detecta automáticamente el objeto `app` o `root_agent` en tu código.
+- **Imagen Docker**: Asegúrate de haber construido y subido la imagen a Artifact Registry antes del despliegue (ver sección anterior).
 - **Secretos**: 
   - Si creaste secretos en Secret Manager ANTES del despliegue, puedes configurarlos durante el despliegue o después.
   - Si creaste secretos DESPUÉS del despliegue, deberás actualizar el servicio (ver sección "Configurar Secretos después del despliegue" más abajo).
@@ -179,6 +233,7 @@ adk deploy cloud_run \
 - Si ejecutas desde `DATAR/`, usa `AGENT_PATH="datar"` (el subdirectorio)
 - El `--app_name` debe coincidir con el `name` del objeto `App` en tu código (`datar_integraciones`)
 - El `requirements.txt` debe estar en `DATAR/datar/requirements.txt` para que se instalen las dependencias correctamente
+- El `adk.yaml` debe estar en `DATAR/datar/adk.yaml` y referenciar la imagen en Artifact Registry
 
 #### Opciones de despliegue
 
@@ -380,8 +435,13 @@ El proyecto está estructurado para cumplir con los requisitos de `adk deploy cl
 - ✅ El código del agente está en `DATAR/datar/agent.py`
 - ✅ La variable `app` está definida en `agent.py`
 - ✅ `DATAR/datar/__init__.py` contiene `from . import agent`
-- ✅ El archivo `requirements.txt` está en `DATAR/datar/requirements.txt` (requerido para que `adk deploy cloud_run` instale las dependencias)
+- ✅ El archivo `requirements.txt` está en `DATAR/datar/requirements.txt` (requerido para instalar dependencias de Python)
+- ✅ El archivo `Dockerfile` está en `DATAR/datar/Dockerfile` (instala `ffmpeg` y construye la imagen completa)
+- ✅ El archivo `adk.yaml` está en `DATAR/datar/adk.yaml` (configuración de despliegue que referencia la imagen en Artifact Registry)
+- ✅ La imagen Docker se construye y sube a Artifact Registry antes del despliegue
 - ✅ El comando se ejecuta desde `DATAR/` con `AGENT_PATH="datar"`
+
+**Nota sobre ffmpeg**: El `Dockerfile` personalizado instala `ffmpeg` que es requerido por `pydub` para generar archivos MP3 en `Gente_Sonora` y `Gente_Pasto`. Si `adk deploy cloud_run` no detecta el Dockerfile personalizado, puede que necesites configurar la instalación de `ffmpeg` de otra manera o contactar al soporte de ADK.
 
 ### Variables de entorno para Cloud Run
 
