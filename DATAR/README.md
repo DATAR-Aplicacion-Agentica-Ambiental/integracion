@@ -10,8 +10,11 @@ Este paquete contiene la **aplicación DATAR** (usando la clase `App` de Google 
 - Dependencias instaladas:
 
 ```bash
-pip install -r requirements.txt
+# Desde el directorio DATAR/
+pip install -r datar/requirements.txt
 ```
+
+**Nota**: El archivo `requirements.txt` está ubicado en `DATAR/datar/requirements.txt` para que `adk deploy cloud_run` lo detecte correctamente cuando se usa `AGENT_PATH="datar"`.
 
 - Variable de entorno para el modelo:
   - `OPENROUTER_API_KEY`: clave de API para acceder al modelo `openrouter/minimax/minimax-m2`.
@@ -94,17 +97,23 @@ DATAR está optimizado para despliegue en Google Cloud Run usando el API Server 
 
 #### Configurar Secretos en Google Cloud Secret Manager (Recomendado)
 
+**⚠️ IMPORTANTE**: Crea los secretos ANTES del despliegue inicial. Si ya desplegaste el servicio, puedes crear los secretos y luego actualizar el servicio (ver sección "Configurar Secretos después del despliegue").
+
 Para producción, es recomendable usar Secret Manager en lugar de pasar variables de entorno directamente. Sigue estos pasos:
 
 **1. Crear el secreto para OPENROUTER_API_KEY:**
 
 ```bash
+# Asegúrate de estar en el directorio DATAR/ o ajusta la ruta del .env
+cd DATAR
+
 # Opción A: Desde el archivo .env (recomendado)
 gcloud secrets create OPENROUTER_API_KEY \
   --project=$GOOGLE_CLOUD_PROJECT \
-  --data-file=<(echo -n "$(grep OPENROUTER_API_KEY DATAR/.env | cut -d '=' -f2)")
+  --data-file=<(echo -n "$(grep OPENROUTER_API_KEY .env | cut -d '=' -f2)")
 
 # Opción B: Desde una variable de entorno
+export OPENROUTER_API_KEY=$(grep OPENROUTER_API_KEY .env | cut -d '=' -f2)
 echo -n "$OPENROUTER_API_KEY" | gcloud secrets create OPENROUTER_API_KEY \
   --project=$GOOGLE_CLOUD_PROJECT \
   --data-file=-
@@ -144,17 +153,32 @@ echo -n "nueva-clave-aqui" | gcloud secrets versions add OPENROUTER_API_KEY \
 
 **Importante**: 
 - El comando `adk deploy cloud_run` detecta automáticamente el objeto `app` o `root_agent` en tu código.
-- Si configuraste secretos en Secret Manager, deberás configurar las referencias a los secretos después del despliegue inicial (ver sección "Configurar Secretos después del despliegue" más abajo).
+- **Secretos**: 
+  - Si creaste secretos en Secret Manager ANTES del despliegue, puedes configurarlos durante el despliegue o después.
+  - Si creaste secretos DESPUÉS del despliegue, deberás actualizar el servicio (ver sección "Configurar Secretos después del despliegue" más abajo).
+  - Si no usas Secret Manager, configura `OPENROUTER_API_KEY` como variable de entorno después del despliegue.
 
 El despliegue se realiza con un solo comando usando `adk deploy cloud_run`:
 
+**Importante**: Ejecuta el comando desde el directorio `DATAR/`:
+
 ```bash
+export APP_NAME="datar_integraciones"
+export AGENT_PATH="datar"  # El subdirectorio que contiene agent.py
+
 adk deploy cloud_run \
   --project=$GOOGLE_CLOUD_PROJECT \
   --region=$GOOGLE_CLOUD_LOCATION \
   --service_name=datar-integraciones \
-  DATAR
+  --app_name=$APP_NAME \
+  --with_ui \
+  $AGENT_PATH
 ```
+
+**Nota sobre AGENT_PATH**: 
+- Si ejecutas desde `DATAR/`, usa `AGENT_PATH="datar"` (el subdirectorio)
+- El `--app_name` debe coincidir con el `name` del objeto `App` en tu código (`datar_integraciones`)
+- El `requirements.txt` debe estar en `DATAR/datar/requirements.txt` para que se instalen las dependencias correctamente
 
 #### Opciones de despliegue
 
@@ -170,20 +194,24 @@ adk deploy cloud_run \
 - Máximo 63 caracteres
 - Debe comenzar con letra
 
-Ejemplo con UI habilitada y nombre personalizado:
+Ejemplo completo con todas las opciones (desde el directorio `DATAR/`):
 
 ```bash
+export APP_NAME="datar_integraciones"
+export AGENT_PATH="datar"
+
 adk deploy cloud_run \
   --project=$GOOGLE_CLOUD_PROJECT \
   --region=$GOOGLE_CLOUD_LOCATION \
   --service_name=datar-integraciones \
-  --webui \
-  DATAR
+  --app_name=$APP_NAME \
+  --with_ui \
+  $AGENT_PATH
 ```
 
 #### Configurar Secretos después del despliegue
 
-Si creaste secretos en Secret Manager, debes configurar las referencias en el servicio de Cloud Run después del despliegue:
+Si creaste secretos en Secret Manager DESPUÉS del despliegue inicial, debes configurar las referencias en el servicio de Cloud Run:
 
 ```bash
 # Actualizar el servicio para usar el secreto
@@ -193,16 +221,27 @@ gcloud run services update datar-integraciones \
   --update-secrets=OPENROUTER_API_KEY=OPENROUTER_API_KEY:latest
 ```
 
-O si prefieres usar variables de entorno directamente (menos seguro para producción):
+**Nota**: Si el servicio ya tiene una variable de entorno `OPENROUTER_API_KEY` configurada directamente, el comando anterior la reemplazará con la referencia al secreto.
+
+**Alternativa: Usar variables de entorno directamente** (menos seguro para producción):
+
+Si prefieres no usar Secret Manager (solo para desarrollo/testing):
 
 ```bash
+# Obtener la clave desde .env
+cd DATAR
+export OPENROUTER_API_KEY=$(grep OPENROUTER_API_KEY .env | cut -d '=' -f2)
+
+# Configurar como variable de entorno en Cloud Run
 gcloud run services update datar-integraciones \
   --project=$GOOGLE_CLOUD_PROJECT \
   --region=$GOOGLE_CLOUD_LOCATION \
-  --set-env-vars="OPENROUTER_API_KEY=tu-clave-aqui"
+  --set-env-vars="OPENROUTER_API_KEY=$OPENROUTER_API_KEY"
 ```
 
-**Recomendación**: Usa Secret Manager para producción, y variables de entorno solo para desarrollo/testing.
+**Recomendación**: 
+- ✅ **Producción**: Usa Secret Manager (más seguro, permite rotación de claves)
+- ⚠️ **Desarrollo/Testing**: Variables de entorno directas son aceptables, pero menos seguras
 
 #### API Server automático
 
@@ -341,7 +380,8 @@ El proyecto está estructurado para cumplir con los requisitos de `adk deploy cl
 - ✅ El código del agente está en `DATAR/datar/agent.py`
 - ✅ La variable `app` está definida en `agent.py`
 - ✅ `DATAR/datar/__init__.py` contiene `from . import agent`
-- ✅ El directorio `DATAR` tiene un nombre claro para el despliegue
+- ✅ El archivo `requirements.txt` está en `DATAR/datar/requirements.txt` (requerido para que `adk deploy cloud_run` instale las dependencias)
+- ✅ El comando se ejecuta desde `DATAR/` con `AGENT_PATH="datar"`
 
 ### Variables de entorno para Cloud Run
 
