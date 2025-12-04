@@ -151,7 +151,7 @@ echo -n "nueva-clave-aqui" | gcloud secrets versions add OPENROUTER_API_KEY \
 
 #### Construir y subir imagen Docker a Artifact Registry
 
-**⚠️ IMPORTANTE**: Antes de desplegar, necesitas construir la imagen Docker personalizada (que incluye `ffmpeg`) y subirla a Artifact Registry.
+**⚠️ IMPORTANTE**: Antes de desplegar, necesitas construir la imagen Docker personalizada y subirla a Artifact Registry.
 
 **1. Configurar variables y crear repositorio:**
 
@@ -436,12 +436,12 @@ El proyecto está estructurado para cumplir con los requisitos de `adk deploy cl
 - ✅ La variable `app` está definida en `agent.py`
 - ✅ `DATAR/datar/__init__.py` contiene `from . import agent`
 - ✅ El archivo `requirements.txt` está en `DATAR/datar/requirements.txt` (requerido para instalar dependencias de Python)
-- ✅ El archivo `Dockerfile` está en `DATAR/datar/Dockerfile` (instala `ffmpeg` y construye la imagen completa)
+- ✅ El archivo `Dockerfile` está en `DATAR/datar/Dockerfile` (construye la imagen completa)
 - ✅ El archivo `adk.yaml` está en `DATAR/datar/adk.yaml` (configuración de despliegue que referencia la imagen en Artifact Registry)
 - ✅ La imagen Docker se construye y sube a Artifact Registry antes del despliegue
 - ✅ El comando se ejecuta desde `DATAR/` con `AGENT_PATH="datar"`
 
-**Nota sobre ffmpeg**: El `Dockerfile` personalizado instala `ffmpeg` que es requerido por `pydub` para generar archivos MP3 en `Gente_Sonora` y `Gente_Pasto`. Si `adk deploy cloud_run` no detecta el Dockerfile personalizado, puede que necesites configurar la instalación de `ffmpeg` de otra manera o contactar al soporte de ADK.
+**Nota sobre procesamiento de audio**: El procesamiento de audio en `Gente_Sonora` y `Gente_Pasto` usa archivos WAV con `scipy` y `numpy`, no requiere `ffmpeg`. Los archivos de audio se exportan directamente en formato WAV.
 
 ### Variables de entorno para Cloud Run
 

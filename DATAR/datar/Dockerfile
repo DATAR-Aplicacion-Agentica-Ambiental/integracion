@@ -1,18 +1,15 @@
 # Dockerfile personalizado para DATAR
-# Este Dockerfile crea una imagen completa con ffmpeg y todas las dependencias necesarias
+# Este Dockerfile crea una imagen completa con todas las dependencias necesarias
 # La imagen se sube a Artifact Registry y se referencia en adk.yaml
+# Nota: Ya no requiere ffmpeg - el procesamiento de audio usa WAV con scipy/numpy
 
 FROM python:3.11-slim
 
 # Instalar dependencias del sistema necesarias
 RUN apt-get update && \
     apt-get install -y --no-install-recommends \
-    ffmpeg \
     build-essential \
     && rm -rf /var/lib/apt/lists/*
-
-# Verificar que ffmpeg esté instalado
-RUN ffmpeg -version || echo "Error: ffmpeg no se instaló correctamente"
 
 # Establecer directorio de trabajo
 WORKDIR /app

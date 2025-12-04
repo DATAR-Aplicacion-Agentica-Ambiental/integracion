@@ -1,5 +1,5 @@
 # Configuración de ADK para despliegue en Cloud Run
-# Este archivo referencia una imagen Docker personalizada en Artifact Registry que incluye ffmpeg
+# Este archivo referencia una imagen Docker personalizada en Artifact Registry
 
 app_name: "datar_integraciones"
 agent_path: "."

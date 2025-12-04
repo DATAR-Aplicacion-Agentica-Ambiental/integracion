@@ -239,9 +239,9 @@ def generar_ascii_morse(sonido: str) -> str:
 
 def generar_composicion_sonido(especificaciones: str) -> str:
     """
-    Genera una composición de sonido con numpy basada en especificaciones y la guarda como archivo MP3.
+    Genera una composición de sonido con numpy basada en especificaciones y la guarda como archivo WAV.
     Crea composiciones ricas con múltiples capas de sonido (fondo ambiental, aves, variaciones).
-    Requiere pydub y ffmpeg para generar archivos MP3.
+    Usa scipy para exportar directamente a WAV sin necesidad de ffmpeg.
     
     Args:
         especificaciones: Especificaciones del sonido (p.ej., "frecuencia: 440, duración: 2, tipo: humedal")
@@ -399,10 +399,6 @@ def generar_composicion_sonido(especificaciones: str) -> str:
         output_dir = os.path.join(os.path.dirname(__file__), "output")
         os.makedirs(output_dir, exist_ok=True)
         
-        # Crear directorio temporal para archivos WAV temporales
-        temp_dir = os.path.join(os.path.dirname(__file__), "temp")
-        os.makedirs(temp_dir, exist_ok=True)
-        
         # Generar nombre de archivo con timestamp
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
         nombre_base = f"composicion_sonido_{timestamp}"
@@ -417,26 +413,12 @@ def generar_composicion_sonido(especificaciones: str) -> str:
             # Asegurar que el audio esté en el rango correcto [-1, 1]
             audio_data = np.clip(audio_data, -1.0, 1.0)
             
-            # Convertir a int16 para WAV temporal (rango: -32768 a 32767)
+            # Convertir a int16 para WAV (rango: -32768 a 32767)
             audio_int16 = (audio_data * 32767).astype(np.int16)
             
-            # Exportar a MP3 usando pydub (requerido)
-            try:
-                from pydub import AudioSegment
-            except ImportError:
-                return "❌ Error: Se requiere 'pydub' para generar archivos MP3. Instala con: pip install pydub\nNota: También necesitas tener ffmpeg instalado en tu sistema."
-            
-            # Primero guardar como WAV temporal en directorio separado
-            archivo_wav_temp = os.path.join(temp_dir, f"{nombre_base}_temp.wav")
-            wavfile.write(archivo_wav_temp, sample_rate, audio_int16)
-            
-            # Convertir WAV a MP3
-            audio_segment = AudioSegment.from_wav(archivo_wav_temp)
-            ruta_archivo = os.path.join(output_dir, f"{nombre_base}.mp3")
-            audio_segment.export(ruta_archivo, format="mp3", bitrate="192k")
-            
-            # Eliminar archivo temporal
-            os.remove(archivo_wav_temp)
+            # Exportar directamente a WAV usando scipy
+            ruta_archivo = os.path.join(output_dir, f"{nombre_base}.wav")
+            wavfile.write(ruta_archivo, sample_rate, audio_int16)
                 
         except Exception as e:
             return f"❌ Error al guardar archivo de audio: {str(e)}"

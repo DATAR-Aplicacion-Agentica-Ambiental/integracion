@@ -138,6 +138,16 @@ DATAR/datar/sub_agents/Gente_Bosque/cartografias/*.png
 DATAR/datar/sub_agents/Gente_Sonora/output/
 DATAR/datar/sub_agents/Gente_Pasto/output/
 
+# Ignorar todos los archivos WAV (excepto los de referencia en sounds/)
+*.wav
+
+# ==============================================================================
+# Archivos que SÍ deben ser trackeados (excepciones)
+# ==============================================================================
+# Archivos WAV de referencia en sounds/ - estos DEBEN ser trackeados en git
+!DATAR/datar/sub_agents/Gente_Pasto/sounds/*.wav
+!DATAR/datar/sub_agents/Gente_Sonora/sounds/*.wav
+
 # ==============================================================================
 # IDEs y editores
 # ==============================================================================
@@ -277,7 +287,7 @@ $RECYCLE.BIN/
 # Notas
 # ==============================================================================
 # Los siguientes archivos/directorios SÍ deben estar en el repositorio:
-# - DATAR/datar/sub_agents/*/sounds/ (sonidos de referencia)
+# - DATAR/datar/sub_agents/*/sounds/*.wav (archivos WAV de referencia - trackeados explícitamente)
 # - DATAR/datar/sub_agents/*/pdfs/ (PDFs de referencia)
 # - DATAR/datar/sub_agents/*/README.md (documentación)
 # - DATAR/requirements.txt (dependencias)
