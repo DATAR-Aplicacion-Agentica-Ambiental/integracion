@@ -1,3 +1,26 @@
+import warnings
+
+# Suprimir warnings de serialización de Pydantic relacionados con Google ADK
+# Estos warnings son conocidos y no afectan la funcionalidad
+warnings.filterwarnings(
+    'ignore',
+    category=UserWarning,
+    message='.*Pydantic.*serializer.*',
+    module='pydantic'
+)
+warnings.filterwarnings(
+    'ignore',
+    category=UserWarning,
+    message='.*Expected.*fields.*but got.*',
+    module='pydantic'
+)
+warnings.filterwarnings(
+    'ignore',
+    category=UserWarning,
+    message='.*serialized value may not be as expected.*',
+    module='pydantic'
+)
+
 from google.adk.agents.llm_agent import Agent
 from google.adk.models.lite_llm import LiteLlm
 from .agents_utils import get_openrouter_config

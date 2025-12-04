@@ -44,6 +44,9 @@ mcp
 # Gente_Bosque - Cartografía con PrettyMaps
 # Nota: prettymaps tiene restricciones de numpy muy antiguas (numpy<1.25)
 # Se instala separadamente con --no-deps en el Dockerfile
+# Para desarrollo local (solo si necesitas la funcionalidad de cartografía):
+#   pip install vsketch
+#   pip install prettymaps --no-deps
 # prettymaps>=1.4.2  # COMENTADO - se instala manualmente
 osmnx>=1.9.3,<2.0
 shapely>=2.0.0
@@ -52,6 +55,7 @@ pandas>=1.4
 networkx>=2.5
 opencv-python-headless>=4.11.0  # Usar headless para servidor sin GUI
 # vsketch>=1.0.0  # COMENTADO - requiere glcontext/X11 que no funciona en Cloud Run
+#   Instalar manualmente en desarrollo local: pip install vsketch
 scikit-image>=0.25.2
 scikit-learn>=1.6.1
 thefuzz>=0.22.1

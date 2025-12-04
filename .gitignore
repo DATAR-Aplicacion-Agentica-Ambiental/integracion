@@ -1,8 +1,28 @@
+# ==============================================================================
+# Sistema de archivos del SO
+# ==============================================================================
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+desktop.ini
+
+# ==============================================================================
 # Python
+# ==============================================================================
+# Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
 *$py.class
 *.so
+
+# C extensions
+*.so
+
+# Distribution / packaging
 .Python
 build/
 develop-eggs/
@@ -16,65 +36,252 @@ parts/
 sdist/
 var/
 wheels/
-pip-wheel-metadata/
 share/python-wheels/
 *.egg-info/
 .installed.cfg
 *.egg
 MANIFEST
 
-# Virtual Environment
-.venv/
-venv/
-ENV/
-env/
-.virtualenv
+# PyInstaller
+*.manifest
+*.spec
 
-# IDEs
-.vscode/
-.idea/
-*.swp
-*.swo
-*~
-.DS_Store
+# Installer logs
+pip-log.txt
+pip-delete-this-directory.txt
 
-# Environment variables (CRÍTICO - NO SUBIR API KEYS)
-.env
-.env.local
-.env.*.local
-API/.env
-**/**.env
+# Unit test / coverage reports
+htmlcov/
+.tox/
+.nox/
+.coverage
+.coverage.*
+.cache
+nosetests.xml
+coverage.xml
+*.cover
+*.py,cover
+.hypothesis/
+.pytest_cache/
+cover/
 
 # Jupyter Notebook
 .ipynb_checkpoints
+*.ipynb
 
-# Testing
-.pytest_cache/
-.coverage
-htmlcov/
-.tox/
+# IPython
+profile_default/
+ipython_config.py
 
-# Type checking
+# pyenv
+.python-version
+
+# ==============================================================================
+# Entornos virtuales
+# ==============================================================================
+# Entornos virtuales de Python
+.env
+.venv
+env/
+venv/
+ENV/
+env.bak/
+venv.bak/
+.venv/
+
+# ==============================================================================
+# Variables de entorno y configuración sensible
+# ==============================================================================
+.env
+.env.local
+.env.*.local
+*.env
+*.key
+*.pem
+*.p12
+*.pfx
+
+# ==============================================================================
+# Logs y archivos temporales
+# ==============================================================================
+*.log
+*.log.*
+logs/
+*.swp
+*.swo
+*~
+.firebase-logs/
+
+# ==============================================================================
+# Cache y archivos temporales del proyecto
+# ==============================================================================
+# Cache de agentes (archivos JSON generados dinámicamente)
+DATAR/cache/*.json
+
+# Directorios temporales
+temp/
+tmp/
+*.tmp
+
+# Directorios de salida generados
+output/
+*/output/
+
+# ==============================================================================
+# Archivos generados dinámicamente
+# ==============================================================================
+# Imágenes generadas por agentes (mantener estructura, ignorar contenido)
+DATAR/datar/sub_agents/Gente_Intuitiva/imagenes_generadas/*.png
+DATAR/datar/sub_agents/Gente_Bosque/cartografias/*.png
+
+# Audio generado dinámicamente (mantener estructura, ignorar contenido)
+DATAR/datar/sub_agents/Gente_Sonora/output/
+DATAR/datar/sub_agents/Gente_Pasto/output/
+
+# ==============================================================================
+# IDEs y editores
+# ==============================================================================
+# Visual Studio Code
+.vscode/
+*.code-workspace
+
+# PyCharm / IntelliJ IDEA
+.idea/
+*.iml
+*.iws
+*.ipr
+
+# Sublime Text
+*.sublime-project
+*.sublime-workspace
+
+# Vim
+[._]*.s[a-v][a-z]
+[._]*.sw[a-p]
+[._]s[a-rt-v][a-z]
+[._]ss[a-gi-z]
+[._]sw[a-p]
+
+# Emacs
+*~
+\#*\#
+/.emacs.desktop
+/.emacs.desktop.lock
+*.elc
+auto-save-list
+tramp
+.\#*
+
+# ==============================================================================
+# Docker
+# ==============================================================================
+# Archivos de contexto de Docker
+.docker/
+
+# Logs de Docker
+docker-compose.log
+docker-compose*.log
+
+# Archivos de override locales (no compartir configuraciones locales)
+docker-compose.override.yml
+docker-compose.override.yaml
+docker-compose.local.yml
+docker-compose.local.yaml
+docker-compose.*.local.yml
+docker-compose.*.local.yaml
+
+# Volúmenes y datos persistentes de Docker
+docker-volumes/
+volumes/
+data/
+*.volume
+
+# Imágenes y contenedores generados
+*.tar
+*.tar.gz
+*.dockerimage
+
+# Build context y archivos temporales de Docker
+.dockerignore.bak
+docker-compose.override.yml.bak
+
+# Archivos de secrets de Docker (no committear)
+docker-secrets/
+secrets/
+*.secret
+*.key.docker
+
+# Archivos de configuración sensible de Docker
+.env.docker
+.env.docker.local
+docker.env
+
+# Buildkit cache
+.docker/
+
+# ==============================================================================
+# Herramientas de desarrollo y CI/CD
+# ==============================================================================
+# mypy
 .mypy_cache/
 .dmypy.json
 dmypy.json
+
+# Pyre type checker
 .pyre/
+
+# pytype static type analyzer
 .pytype/
 
-# Logs
-*.log
-logs/
+# Cython debug symbols
+cython_debug/
 
-# Database
-*.db
-*.sqlite3
+# ==============================================================================
+# Sistema operativo específico
+# ==============================================================================
+# macOS
+.AppleDouble
+.LSOverride
+Icon
 
-# Temporary files
-*.tmp
+# Windows
+[Dd]esktop.ini
+$RECYCLE.BIN/
+*.cab
+*.msi
+*.msix
+*.msm
+*.msp
+*.lnk
+
+# Linux
+*~
+.fuse_hidden*
+.directory
+.Trash-*
+.nfs*
+
+# ==============================================================================
+# Archivos de backup y temporales
+# ==============================================================================
 *.bak
+*.backup
+*.old
+*.orig
+*.save
 *.swp
+*.swo
+*~
 
-# OSMnx cache (datos de OpenStreetMap descargados)
-DATAR/cache/
-cache/
-
+# ==============================================================================
+# Notas
+# ==============================================================================
+# Los siguientes archivos/directorios SÍ deben estar en el repositorio:
+# - DATAR/datar/sub_agents/*/sounds/ (sonidos de referencia)
+# - DATAR/datar/sub_agents/*/pdfs/ (PDFs de referencia)
+# - DATAR/datar/sub_agents/*/README.md (documentación)
+# - DATAR/requirements.txt (dependencias)
+# - Código fuente .py (excepto __pycache__)
+# - Dockerfile (configuración base de Docker)
+# - docker-compose.yml (configuración base de docker-compose, sin override local)
+# - .dockerignore (si existe, para optimizar builds de Docker)

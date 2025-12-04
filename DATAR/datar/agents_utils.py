@@ -1,8 +1,29 @@
 import os
+import warnings
 from dataclasses import dataclass
 from typing import Optional
 
 from dotenv import load_dotenv
+
+# Suprimir warnings de serialización de Pydantic relacionados con Google ADK
+# Estos warnings son conocidos y no afectan la funcionalidad.
+# Ocurren cuando Pydantic intenta serializar objetos Message/Choices del SDK de Google ADK
+# que tienen estructuras ligeramente diferentes a las esperadas por Pydantic.
+warnings.filterwarnings(
+    'ignore',
+    category=UserWarning,
+    message='.*Pydantic.*serializer.*',
+)
+warnings.filterwarnings(
+    'ignore',
+    category=UserWarning,
+    message='.*Expected.*fields.*but got.*',
+)
+warnings.filterwarnings(
+    'ignore',
+    category=UserWarning,
+    message='.*serialized value may not be as expected.*',
+)
 
 
 OPENROUTER_API_KEY_ENV = "OPENROUTER_API_KEY"
