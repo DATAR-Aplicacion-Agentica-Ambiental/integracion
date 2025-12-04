@@ -18,17 +18,24 @@ pip install -r requirements.txt
 
 ### Configuración de entorno
 
-Se recomienda usar un archivo `.env` en la raíz del proyecto (`DATAR/.env`, por ejemplo):
+Se recomienda usar un archivo `.env` en la raíz del proyecto (`DATAR/.env`):
 
 ```env
+# Clave de API para OpenRouter (requerida)
 OPENROUTER_API_KEY=tu_clave_de_openrouter_aqui
+
+# Variables de Google Cloud (requeridas para despliegue en Cloud Run)
+GOOGLE_CLOUD_PROJECT=tu-proyecto-gcp
+GOOGLE_CLOUD_LOCATION=southamerica-east1
 ```
 
 Las utilidades de `DATAR/datar/agents_utils.py` se encargan de:
 
-- Cargar el `.env` automáticamente si existe.
+- Cargar el `.env` automáticamente si existe (siempre desde `DATAR/.env`).
 - Validar que `OPENROUTER_API_KEY` esté definida.
 - Entregar una configuración consistente a todos los agentes.
+
+**Nota**: Las variables `GOOGLE_CLOUD_PROJECT` y `GOOGLE_CLOUD_LOCATION` son necesarias para el despliegue en Cloud Run, pero no son requeridas para ejecución local con `adk run`.
 
 ### Agentes disponibles
 
@@ -80,12 +87,64 @@ DATAR está optimizado para despliegue en Google Cloud Run usando el API Server 
 
 1. **Google Cloud Project**: Tener un proyecto de Google Cloud configurado
 2. **Autenticación**: Estar autenticado con `gcloud auth login`
-3. **Variables de entorno**: Configurar las siguientes variables:
-   - `OPENROUTER_API_KEY`: Clave de API para OpenRouter (configurar como Secret en Cloud Run)
+3. **Variables de entorno locales**: Configurar en tu `.env`:
+   - `OPENROUTER_API_KEY`: Clave de API para OpenRouter
    - `GOOGLE_CLOUD_PROJECT`: ID del proyecto de Google Cloud
-   - `GOOGLE_CLOUD_LOCATION`: Región de despliegue (ej: `us-central1`)
+   - `GOOGLE_CLOUD_LOCATION`: Región de despliegue (ej: `southamerica-east1`)
+
+#### Configurar Secretos en Google Cloud Secret Manager (Recomendado)
+
+Para producción, es recomendable usar Secret Manager en lugar de pasar variables de entorno directamente. Sigue estos pasos:
+
+**1. Crear el secreto para OPENROUTER_API_KEY:**
+
+```bash
+# Opción A: Desde el archivo .env (recomendado)
+gcloud secrets create OPENROUTER_API_KEY \
+  --project=$GOOGLE_CLOUD_PROJECT \
+  --data-file=<(echo -n "$(grep OPENROUTER_API_KEY DATAR/.env | cut -d '=' -f2)")
+
+# Opción B: Desde una variable de entorno
+echo -n "$OPENROUTER_API_KEY" | gcloud secrets create OPENROUTER_API_KEY \
+  --project=$GOOGLE_CLOUD_PROJECT \
+  --data-file=-
+
+# Opción C: Ingresar manualmente (te pedirá el valor)
+gcloud secrets create OPENROUTER_API_KEY \
+  --project=$GOOGLE_CLOUD_PROJECT \
+  --replication-policy="automatic"
+```
+
+**2. Dar permisos al servicio de Cloud Run para acceder al secreto:**
+
+Primero, obtén el número de proyecto:
+
+```bash
+PROJECT_NUMBER=$(gcloud projects describe $GOOGLE_CLOUD_PROJECT --format="value(projectNumber)")
+```
+
+Luego, otorga permisos:
+
+```bash
+gcloud secrets add-iam-policy-binding OPENROUTER_API_KEY \
+  --project=$GOOGLE_CLOUD_PROJECT \
+  --member="serviceAccount:${PROJECT_NUMBER}-compute@developer.gserviceaccount.com" \
+  --role="roles/secretmanager.secretAccessor"
+```
+
+**Nota**: Si el secreto ya existe, puedes actualizarlo con:
+
+```bash
+echo -n "nueva-clave-aqui" | gcloud secrets versions add OPENROUTER_API_KEY \
+  --project=$GOOGLE_CLOUD_PROJECT \
+  --data-file=-
+```
 
 #### Comando de despliegue
+
+**Importante**: 
+- El comando `adk deploy cloud_run` detecta automáticamente el objeto `app` o `root_agent` en tu código.
+- Si configuraste secretos en Secret Manager, deberás configurar las referencias a los secretos después del despliegue inicial (ver sección "Configurar Secretos después del despliegue" más abajo).
 
 El despliegue se realiza con un solo comando usando `adk deploy cloud_run`:
 
@@ -93,33 +152,89 @@ El despliegue se realiza con un solo comando usando `adk deploy cloud_run`:
 adk deploy cloud_run \
   --project=$GOOGLE_CLOUD_PROJECT \
   --region=$GOOGLE_CLOUD_LOCATION \
+  --service_name=datar-integraciones \
   DATAR
 ```
 
 #### Opciones de despliegue
 
+- `--service_name` o `-s`: Nombre del servicio en Cloud Run (por defecto: `adk-default-service-name`)
+- `--app_name`: Nombre de la aplicación (opcional, por defecto usa el nombre del directorio del agente)
 - `--api`: Despliega el API Server de ADK (habilitado por defecto)
-- `--webui`: Despliega la UI de desarrollo de ADK (opcional, útil para testing)
-- `--a2a`: Habilita comunicación Agent2Agent (opcional)
+- `--webui` o `--with_ui`: Despliega la UI de desarrollo de ADK (opcional, útil para testing)
+- `--a2a`: Habilita comunicación Agent2Agent (opcional, habilitado por defecto)
 - `--allow-unauthenticated`: Permite acceso público (por defecto requiere autenticación)
 
-Ejemplo con UI habilitada:
+**Nota sobre el nombre del servicio**: El nombre debe cumplir con las reglas de Cloud Run:
+- Solo letras minúsculas, números y guiones
+- Máximo 63 caracteres
+- Debe comenzar con letra
+
+Ejemplo con UI habilitada y nombre personalizado:
 
 ```bash
 adk deploy cloud_run \
   --project=$GOOGLE_CLOUD_PROJECT \
   --region=$GOOGLE_CLOUD_LOCATION \
+  --service_name=datar-integraciones \
   --webui \
   DATAR
 ```
+
+#### Configurar Secretos después del despliegue
+
+Si creaste secretos en Secret Manager, debes configurar las referencias en el servicio de Cloud Run después del despliegue:
+
+```bash
+# Actualizar el servicio para usar el secreto
+gcloud run services update datar-integraciones \
+  --project=$GOOGLE_CLOUD_PROJECT \
+  --region=$GOOGLE_CLOUD_LOCATION \
+  --update-secrets=OPENROUTER_API_KEY=OPENROUTER_API_KEY:latest
+```
+
+O si prefieres usar variables de entorno directamente (menos seguro para producción):
+
+```bash
+gcloud run services update datar-integraciones \
+  --project=$GOOGLE_CLOUD_PROJECT \
+  --region=$GOOGLE_CLOUD_LOCATION \
+  --set-env-vars="OPENROUTER_API_KEY=tu-clave-aqui"
+```
+
+**Recomendación**: Usa Secret Manager para producción, y variables de entorno solo para desarrollo/testing.
 
 #### API Server automático
 
 Una vez desplegado, el API Server de ADK expone automáticamente los siguientes endpoints REST:
 
-- `GET /list-apps`: Listar aplicaciones disponibles
-- `POST /apps/{app_name}/users/{user_id}/sessions/{session_id}`: Crear o actualizar sesiones
-- `POST /run_sse`: Ejecutar agentes con soporte para streaming (Server-Sent Events)
+##### Endpoints principales
+
+- **`GET /list-apps`**: Listar todas las aplicaciones disponibles
+
+- **`POST /run`**: Ejecutar un agente y devolver eventos (sin streaming)
+  - Cuerpo: `{"app_name": "DATAR", "user_id": "...", "session_id": "...", "new_message": {...}, "streaming": false}`
+  - Respuesta: Array JSON de eventos
+
+- **`POST /run_sse`**: Ejecutar un agente con Server-Sent Events (streaming)
+  - Cuerpo: Igual que `/run` pero con `"streaming": true`
+  - Respuesta: Flujo SSE de eventos en tiempo real
+
+##### Gestión de sesiones
+
+- **`GET /apps/{app_name}/users/{user_id}/sessions`**: Listar todas las sesiones de un usuario
+- **`POST /apps/{app_name}/users/{user_id}/sessions`**: Crear una nueva sesión
+- **`GET /apps/{app_name}/users/{user_id}/sessions/{session_id}`**: Obtener detalles de una sesión específica
+- **`POST /apps/{app_name}/users/{user_id}/sessions/{session_id}`**: Crear o actualizar una sesión específica
+- **`DELETE /apps/{app_name}/users/{user_id}/sessions/{session_id}`**: Eliminar una sesión
+
+##### Gestión de artefactos
+
+- **`GET /apps/{app_name}/users/{user_id}/sessions/{session_id}/artifacts`**: Listar todos los artefactos de una sesión
+- **`GET /apps/{app_name}/users/{user_id}/sessions/{session_id}/artifacts/{artifact_name}`**: Obtener un artefacto específico
+- **`DELETE /apps/{app_name}/users/{user_id}/sessions/{session_id}/artifacts/{artifact_name}`**: Eliminar un artefacto
+- **`GET /apps/{app_name}/users/{user_id}/sessions/{session_id}/artifacts/{artifact_name}/versions`**: Listar versiones de un artefacto
+- **`GET /apps/{app_name}/users/{user_id}/sessions/{session_id}/artifacts/{artifact_name}/versions/{version_id}`**: Obtener una versión específica de un artefacto
 
 #### Testing después del despliegue
 
@@ -151,21 +266,21 @@ Crear o actualizar una sesión:
 
 ```bash
 curl -X POST -H "Authorization: Bearer $TOKEN" \
-    $APP_URL/apps/datar_integraciones/users/user_123/sessions/session_abc \
+    $APP_URL/apps/DATAR/users/test_user/sessions/test_session \
     -H "Content-Type: application/json" \
     -d '{"preferred_language": "es", "visit_count": 1}'
 ```
 
-Ejecutar el agente:
+Ejecutar el agente (sin streaming):
 
 ```bash
 curl -X POST -H "Authorization: Bearer $TOKEN" \
-    $APP_URL/run_sse \
+    $APP_URL/run \
     -H "Content-Type: application/json" \
     -d '{
-    "app_name": "datar_integraciones",
-    "user_id": "user_123",
-    "session_id": "session_abc",
+    "app_name": "DATAR",
+    "user_id": "test_user",
+    "session_id": "test_session",
     "new_message": {
         "role": "user",
         "parts": [{
@@ -176,7 +291,48 @@ curl -X POST -H "Authorization: Bearer $TOKEN" \
     }'
 ```
 
-Para recibir respuestas en streaming, establece `"streaming": true` en la petición anterior.
+Ejecutar el agente con streaming (SSE):
+
+```bash
+curl -X POST -H "Authorization: Bearer $TOKEN" \
+    $APP_URL/run_sse \
+    -H "Content-Type: application/json" \
+    -d '{
+    "app_name": "DATAR",
+    "user_id": "test_user",
+    "session_id": "test_session",
+    "new_message": {
+        "role": "user",
+        "parts": [{
+        "text": "Hola, ¿con qué agente puedo explorar hoy?"
+        }]
+    },
+    "streaming": true
+    }'
+```
+
+Listar sesiones de un usuario:
+
+```bash
+curl -X GET -H "Authorization: Bearer $TOKEN" \
+    $APP_URL/apps/DATAR/users/test_user/sessions
+```
+
+Obtener detalles de una sesión:
+
+```bash
+curl -X GET -H "Authorization: Bearer $TOKEN" \
+    $APP_URL/apps/DATAR/users/test_user/sessions/test_session
+```
+
+Listar artefactos de una sesión:
+
+```bash
+curl -X GET -H "Authorization: Bearer $TOKEN" \
+    $APP_URL/apps/DATAR/users/test_user/sessions/test_session/artifacts
+```
+
+**Nota**: Reemplaza `DATAR` con el nombre de aplicación que obtuviste de `/list-apps` si es diferente.
 
 #### Estructura del proyecto para Cloud Run
 
@@ -192,10 +348,11 @@ El proyecto está estructurado para cumplir con los requisitos de `adk deploy cl
 Las siguientes variables de entorno deben configurarse en Cloud Run:
 
 - **`OPENROUTER_API_KEY`**: Clave de API para acceder al modelo `openrouter/minimax/minimax-m2` (requerida)
-  - Se recomienda configurarla como Secret en Google Cloud Secret Manager
-  - Referencia en Cloud Run: `OPENROUTER_API_KEY:projects/PROJECT_ID/secrets/OPENROUTER_API_KEY:latest`
-- **`GOOGLE_CLOUD_PROJECT`**: ID del proyecto de Google Cloud (requerida para servicios de Google Cloud)
-- **`GOOGLE_CLOUD_LOCATION`**: Región de despliegue (ej: `us-central1`)
+  - **Recomendado**: Configurarla como Secret en Google Cloud Secret Manager (ver sección "Configurar Secretos" arriba)
+  - **Alternativa**: Configurarla como variable de entorno directamente (menos seguro)
+  - Referencia a Secret: `OPENROUTER_API_KEY=OPENROUTER_API_KEY:latest` (cuando se usa Secret Manager)
+- **`GOOGLE_CLOUD_PROJECT`**: ID del proyecto de Google Cloud (se configura automáticamente en el despliegue)
+- **`GOOGLE_CLOUD_LOCATION`**: Región de despliegue (se configura automáticamente en el despliegue)
 
 ### Buenas prácticas de configuración y seguridad
 
