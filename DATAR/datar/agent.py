@@ -43,7 +43,7 @@ root_agent = Agent(
         api_key=config.api_key,
         api_base=config.api_base,
     ),
-    name="root_agent",
+    name="Gente_Raiz",
     description="Agente raíz DATAR",
     instruction="Ayuda con la prueba de los sub-agentes disponibles en esta versión de DATAR.",
     sub_agents=[
