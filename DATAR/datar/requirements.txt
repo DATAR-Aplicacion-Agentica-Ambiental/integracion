@@ -40,21 +40,14 @@ PyMuPDF  # proporciona el módulo `fitz`
 fastmcp
 mcp
 
-# Gente_Bosque - Cartografía con PrettyMaps
-# Nota: prettymaps tiene restricciones de numpy muy antiguas (numpy<1.25)
-# Se instala separadamente con --no-deps en el Dockerfile
-# Para desarrollo local (solo si necesitas la funcionalidad de cartografía):
-#   pip install vsketch
-#   pip install prettymaps --no-deps
-# prettymaps>=1.4.2  # COMENTADO - se instala manualmente
+# Gente_Bosque - Cartografía emocional usando osmnx + geopandas + matplotlib
+# Solución simplificada compatible con Cloud Run (sin dependencias GUI como PrettyMaps/vsketch)
 osmnx>=1.9.3,<2.0
 shapely>=2.0.0
 geopandas>=1.0.1
 pandas>=1.4
 networkx>=2.5
 opencv-python-headless>=4.11.0  # Usar headless para servidor sin GUI
-# vsketch>=1.0.0  # COMENTADO - requiere glcontext/X11 que no funciona en Cloud Run
-#   Instalar manualmente en desarrollo local: pip install vsketch
 scikit-image>=0.25.2
 scikit-learn>=1.6.1
 thefuzz>=0.22.1
@@ -62,7 +55,7 @@ elevation>=1.1.3
 rioxarray>=0.18.2
 rasterio>=1.4.3
 ipython>=9.0.0
-tqdm>=4.65.0  # Requerido por prettymaps
+tqdm>=4.65.0
 pyproj>=3.5.0  # Requerido por geopandas
 pyogrio>=0.7.2  # Requerido por geopandas
 xarray>=2024.7.0  # Requerido por rioxarray

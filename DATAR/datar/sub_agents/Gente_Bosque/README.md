@@ -28,7 +28,6 @@ Estas preguntas buscan ampliar la mirada hacia temas como **simbiosis y cooperac
 
 ### 4. Cartografía emocional
 
-Luego de que el usuario ha compartido su experiencia en el momento, el agente consulta sobre la herramienta `crear_cartografía_emocional`. Esta función genera una **visualización geográfica** usando [prettymaps](https://github.com/marceloprates/prettymaps)
-, coloreando el territorio según las emociones descritas (por ejemplo: tranquilidad, asombro, incomodidad, etc).  
+Luego de que el usuario ha compartido su experiencia en el momento, el agente consulta sobre la herramienta `crear_cartografía_emocional`. Esta función genera una **visualización geográfica** usando osmnx + geopandas + matplotlib, coloreando el territorio según las emociones descritas (por ejemplo: tranquilidad, asombro, incomodidad, etc).  
 
-El mapa se convierte en una **traducción visual del encuentro entre persona y ecosistema**, un _**registro emocional-ecológico del lugar**_.
+El mapa se convierte en una **traducción visual del encuentro entre persona y ecosistema**, un _**registro emocional-ecológico del lugar**_. La implementación es compatible con entornos serverless como Google Cloud Run.
