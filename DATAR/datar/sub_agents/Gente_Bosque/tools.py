@@ -230,6 +230,7 @@ def crear_mapa_emocional(descripcion: str) -> str:
     - alegria: felicidad pura, celebración, gozo, contento, bienestar emocional
     """
     import os
+    import gc
     from datetime import datetime
     import warnings
     import matplotlib
@@ -237,9 +238,16 @@ def crear_mapa_emocional(descripcion: str) -> str:
     import matplotlib.pyplot as plt
     import osmnx as ox
     import geopandas as gpd
+    import tempfile
+    import os
     
     # Suprimir advertencias
     warnings.filterwarnings('ignore', category=UserWarning)
+    
+    # Configurar OSMnx para usar /tmp como caché (único lugar con permisos en Cloud Run)
+    cache_dir = os.path.join(tempfile.gettempdir(), 'osmnx_cache')
+    os.makedirs(cache_dir, exist_ok=True)
+    ox.settings.cache_folder = cache_dir
     ox.settings.use_cache = True  # Usar cache para mejorar rendimiento
     ox.settings.log_console = False  # Reducir logs
 
@@ -418,9 +426,8 @@ def crear_mapa_emocional(descripcion: str) -> str:
     estilo_edificios = estilo_completo["building"]
 
     try:
-
-        # Radio de ~1000 metros alrededor del Bosque La Macarena
-        distancia = 1000  # metros
+        # Radio reducido para optimizar memoria (500m para reducir consumo)
+        distancia = 500  # metros
         
         # Obtener red de calles usando osmnx
         G = ox.graph_from_point(
@@ -434,6 +441,11 @@ def crear_mapa_emocional(descripcion: str) -> str:
         gdf_calles = ox.graph_to_gdfs(G, nodes=False, edges=True)
         gdf_calles = gdf_calles.to_crs('EPSG:4326')
         
+        # Liberar el grafo G inmediatamente después de convertirlo
+        del G
+        import gc
+        gc.collect()  # Forzar garbage collection
+        
         # Obtener edificios
         tags = {'building': True}
         gdf_edificios = ox.features_from_point(
@@ -442,8 +454,11 @@ def crear_mapa_emocional(descripcion: str) -> str:
             tags=tags
         )
         
-        # Crear figura de matplotlib
-        fig, ax = plt.subplots(figsize=(12, 12), facecolor=color_fondo)
+        # Liberar memoria después de obtener datos de OSM
+        gc.collect()
+        
+        # Crear figura de matplotlib con tamaño reducido para optimizar memoria
+        fig, ax = plt.subplots(figsize=(8, 8), facecolor=color_fondo)
         
         # Definir grosores de línea por tipo de calle
         width_map = {
@@ -543,13 +558,19 @@ def crear_mapa_emocional(descripcion: str) -> str:
                 ruta_temp = temp_file.name
                 fig.savefig(
                     ruta_temp,
-                    dpi=150,
+                    dpi=72,  # DPI reducido para optimizar memoria (72 DPI es suficiente para web)
                     bbox_inches='tight',
                     facecolor=color_fondo
                 )
             
             # Cerrar la figura para liberar memoria
             plt.close(fig)
+            plt.close('all')  # Cerrar todas las figuras abiertas
+            
+            # Liberar GeoDataFrames explícitamente
+            del gdf_calles
+            del gdf_edificios
+            gc.collect()  # Forzar garbage collection después de cerrar figuras
 
             # Intentar subir el PNG a Cloud Storage
             try:
@@ -578,6 +599,15 @@ def crear_mapa_emocional(descripcion: str) -> str:
                     pass
         except Exception as e:
             plt.close(fig)
+            plt.close('all')
+            # Intentar liberar memoria en caso de error
+            if 'gdf_calles' in locals():
+                del gdf_calles
+            if 'gdf_edificios' in locals():
+                del gdf_edificios
+            if 'G' in locals():
+                del G
+            gc.collect()
             error_gcs = str(e)
         
         mensaje = (
