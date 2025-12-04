@@ -1,6 +1,6 @@
 AGENTS_REGISTRY = {
     "app": {
-        "name": "datar",
+        "name": "datar-integraciones",
         "description": "Aplicación DATAR - Orquestador de sub-agentes usando App class de Google ADK",
         "type": "app",
         "model": "openrouter/minimax/minimax-m2",

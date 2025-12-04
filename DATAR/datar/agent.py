@@ -60,6 +60,6 @@ root_agent = Agent(
 
 # Crear el objeto App para Cloud Run y API Server
 app = App(
-    name="datar",
+    name="datar-integraciones",
     root_agent=root_agent,
 )
