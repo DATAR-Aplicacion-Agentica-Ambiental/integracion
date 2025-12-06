@@ -34,7 +34,15 @@
         voiceCanvas: document.getElementById('voice-canvas'),
 
         // Audio
-        audioCanvas: document.getElementById('audio-canvas')
+        audioCanvas: document.getElementById('audio-canvas'),
+
+        // File Preview
+        filePreview: document.getElementById('file-preview'),
+
+        // Lightbox
+        lightbox: document.getElementById('lightbox'),
+        lightboxImg: document.getElementById('lightbox-img'),
+        lightboxClose: document.getElementById('lightbox-close')
     };
 
     // ========================================
@@ -44,7 +52,8 @@
         isLoading: false,
         isRecording: false,
         currentAgent: 'Gente_Raiz',
-        messages: []
+        messages: [],
+        pendingFiles: [] // Files waiting to be sent
     };
 
     // ========================================
@@ -54,11 +63,24 @@
         // Initialize API
         DatarAPI.init();
 
+        // Configure marked.js for Markdown parsing
+        if (typeof marked !== 'undefined') {
+            marked.setOptions({
+                breaks: true,
+                gfm: true,
+                headerIds: false,
+                mangle: false
+            });
+        }
+
         // Bind events
         bindEvents();
 
         // Initialize audio visualization
         initAudioVisualization();
+
+        // Initialize lightbox
+        initLightbox();
 
         // Focus input
         elements.messageInput.focus();
@@ -127,14 +149,18 @@
     // ========================================
     async function handleSendMessage() {
         const message = elements.messageInput.value.trim();
+        const files = [...state.pendingFiles];
 
-        if (!message || state.isLoading) return;
+        if ((!message && files.length === 0) || state.isLoading) return;
 
-        // Add user message to chat
-        addMessage(message, 'user');
+        // Add user message to chat (with file info if present)
+        if (message || files.length > 0) {
+            addUserMessage(message, files);
+        }
 
-        // Clear input
+        // Clear input and files
         elements.messageInput.value = '';
+        clearPendingFiles();
         updateSendButtonState();
 
         // Set loading state
@@ -144,44 +170,146 @@
         const typingId = showTypingIndicator();
 
         try {
-            // Send message to API
-            const events = await DatarAPI.sendMessage(message);
+            // Send message to API with files
+            const events = await DatarAPI.sendMessage(message, files);
 
             // Remove typing indicator
             removeTypingIndicator(typingId);
 
             // Process response events
             for (const event of events) {
-                const text = DatarAPI.extractTextFromEvent(event);
-                if (text) {
-                    const author = DatarAPI.getEventAuthor(event);
-                    addMessage(text, 'agent', author);
+                const content = DatarAPI.extractContentFromEvent(event);
+                const author = DatarAPI.getEventAuthor(event);
+
+                // Only add message if there's content
+                if (content.text || content.images.length > 0 || content.audio.length > 0) {
+                    addAgentMessage(content, author);
                 }
             }
         } catch (error) {
             console.error('[App] Error sending message:', error);
             removeTypingIndicator(typingId);
-            addMessage('Lo siento, hubo un error al procesar tu mensaje. Por favor, intenta de nuevo.', 'agent', 'Sistema');
+            addAgentMessage({ text: 'Lo siento, hubo un error al procesar tu mensaje. Por favor, intenta de nuevo.', images: [], audio: [] }, 'Sistema');
         } finally {
             setLoading(false);
         }
     }
 
-    function addMessage(text, type, author = null) {
+    /**
+     * Add a user message to the chat
+     */
+    function addUserMessage(text, files = []) {
         const messageEl = document.createElement('div');
-        messageEl.className = `message message-${type}`;
+        messageEl.className = 'message message-user';
 
         const contentEl = document.createElement('div');
         contentEl.className = 'message-content';
 
-        const textEl = document.createElement('p');
-        textEl.textContent = text;
-        contentEl.appendChild(textEl);
+        // Add text if present
+        if (text) {
+            const textEl = document.createElement('p');
+            textEl.textContent = text;
+            contentEl.appendChild(textEl);
+        }
+
+        // Add file previews
+        if (files.length > 0) {
+            const filesContainer = document.createElement('div');
+            filesContainer.className = 'message-files';
+
+            for (const file of files) {
+                if (file.type.startsWith('image/')) {
+                    const img = document.createElement('img');
+                    img.className = 'message-image';
+                    img.src = URL.createObjectURL(file);
+                    img.alt = file.name;
+                    img.addEventListener('click', () => openLightbox(img.src));
+                    filesContainer.appendChild(img);
+                } else if (file.type.startsWith('audio/')) {
+                    const audioContainer = document.createElement('div');
+                    audioContainer.className = 'message-audio';
+                    const audio = document.createElement('audio');
+                    audio.controls = true;
+                    audio.src = URL.createObjectURL(file);
+                    audioContainer.appendChild(audio);
+                    filesContainer.appendChild(audioContainer);
+                } else {
+                    const fileInfo = document.createElement('div');
+                    fileInfo.className = 'message-file-info';
+                    fileInfo.textContent = `📎 ${file.name}`;
+                    filesContainer.appendChild(fileInfo);
+                }
+            }
+
+            contentEl.appendChild(filesContainer);
+        }
+
+        messageEl.appendChild(contentEl);
+        insertMessage(messageEl);
+
+        // Store in state
+        state.messages.push({ text, type: 'user', files: files.map(f => f.name), timestamp: Date.now() });
+    }
+
+    /**
+     * Add an agent message to the chat with Markdown and media support
+     */
+    function addAgentMessage(content, author = null) {
+        const messageEl = document.createElement('div');
+        messageEl.className = 'message message-agent';
+
+        const contentEl = document.createElement('div');
+        contentEl.className = 'message-content';
+
+        // Render Markdown text
+        if (content.text) {
+            const textContainer = document.createElement('div');
+            textContainer.className = 'markdown';
+
+            // Use marked.js to parse Markdown
+            if (typeof marked !== 'undefined') {
+                textContainer.innerHTML = marked.parse(content.text);
+            } else {
+                textContainer.textContent = content.text;
+            }
+
+            contentEl.appendChild(textContainer);
+        }
+
+        // Add images
+        if (content.images && content.images.length > 0) {
+            const imagesContainer = document.createElement('div');
+            imagesContainer.className = 'message-images';
+
+            for (const image of content.images) {
+                const img = document.createElement('img');
+                img.className = 'message-image';
+                img.src = image.url;
+                img.alt = 'Imagen del agente';
+                img.addEventListener('click', () => openLightbox(image.url));
+                imagesContainer.appendChild(img);
+            }
+
+            contentEl.appendChild(imagesContainer);
+        }
+
+        // Add audio players
+        if (content.audio && content.audio.length > 0) {
+            for (const audioData of content.audio) {
+                const audioContainer = document.createElement('div');
+                audioContainer.className = 'message-audio';
+                const audio = document.createElement('audio');
+                audio.controls = true;
+                audio.src = audioData.url;
+                audioContainer.appendChild(audio);
+                contentEl.appendChild(audioContainer);
+            }
+        }
 
         messageEl.appendChild(contentEl);
 
-        // Add play button for agent messages
-        if (type === 'agent') {
+        // Add play button for text-to-speech
+        if (content.text) {
             const actionBtn = document.createElement('button');
             actionBtn.className = 'message-action';
             actionBtn.setAttribute('aria-label', 'Reproducir');
@@ -190,23 +318,45 @@
                     <path d="M3 22v-20l18 10-18 10z"/>
                 </svg>
             `;
-            actionBtn.addEventListener('click', () => speakText(text));
+            actionBtn.addEventListener('click', () => speakText(content.text));
             messageEl.appendChild(actionBtn);
         }
 
-        // Insert before audio visualization
+        insertMessage(messageEl);
+
+        // Store in state
+        state.messages.push({
+            text: content.text,
+            type: 'agent',
+            author,
+            images: content.images?.length || 0,
+            audio: content.audio?.length || 0,
+            timestamp: Date.now()
+        });
+    }
+
+    /**
+     * Insert a message element into the chat
+     */
+    function insertMessage(messageEl) {
         const audioViz = document.getElementById('audio-viz');
         if (audioViz) {
             elements.chatMessages.insertBefore(messageEl, audioViz);
         } else {
             elements.chatMessages.appendChild(messageEl);
         }
-
-        // Scroll to bottom
         scrollToBottom();
+    }
 
-        // Store in state
-        state.messages.push({ text, type, author, timestamp: Date.now() });
+    /**
+     * Legacy addMessage function for backward compatibility
+     */
+    function addMessage(text, type, author = null) {
+        if (type === 'user') {
+            addUserMessage(text);
+        } else {
+            addAgentMessage({ text, images: [], audio: [] }, author);
+        }
     }
 
     function showTypingIndicator() {
@@ -266,7 +416,8 @@
 
     function updateSendButtonState() {
         const hasText = elements.messageInput.value.trim().length > 0;
-        elements.btnSend.disabled = !hasText || state.isLoading;
+        const hasFiles = state.pendingFiles.length > 0;
+        elements.btnSend.disabled = (!hasText && !hasFiles) || state.isLoading;
     }
 
     // ========================================
@@ -322,12 +473,103 @@
     }
 
     function processFiles(files) {
-        // TODO: Implement file upload to API
         console.log('[App] Files selected:', files);
 
-        // For now, just close modal and show message
+        // Add files to pending state
+        for (const file of files) {
+            // Filter by accepted types (images and audio)
+            if (file.type.startsWith('image/') || file.type.startsWith('audio/')) {
+                state.pendingFiles.push(file);
+            } else {
+                console.warn('[App] Unsupported file type:', file.type);
+            }
+        }
+
+        // Close modal
         closeAllModals();
-        addMessage(`Archivo(s) seleccionado(s): ${Array.from(files).map(f => f.name).join(', ')}`, 'user');
+
+        // Update file preview
+        updateFilePreview();
+
+        // Update send button state
+        updateSendButtonState();
+
+        // Focus input
+        elements.messageInput.focus();
+    }
+
+    /**
+     * Update the file preview area
+     */
+    function updateFilePreview() {
+        const preview = elements.filePreview;
+        if (!preview) return;
+
+        // Clear existing preview
+        preview.innerHTML = '';
+
+        if (state.pendingFiles.length === 0) {
+            preview.style.display = 'none';
+            return;
+        }
+
+        preview.style.display = 'flex';
+
+        for (let i = 0; i < state.pendingFiles.length; i++) {
+            const file = state.pendingFiles[i];
+            const item = document.createElement('div');
+            item.className = 'file-preview-item';
+
+            if (file.type.startsWith('image/')) {
+                const img = document.createElement('img');
+                img.src = URL.createObjectURL(file);
+                img.alt = file.name;
+                item.appendChild(img);
+            } else if (file.type.startsWith('audio/')) {
+                const icon = document.createElement('div');
+                icon.className = 'file-preview-icon';
+                icon.innerHTML = `
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M9 18V5l12-2v13"/>
+                        <circle cx="6" cy="18" r="3"/>
+                        <circle cx="18" cy="16" r="3"/>
+                    </svg>
+                `;
+                item.appendChild(icon);
+
+                const name = document.createElement('span');
+                name.className = 'file-preview-name';
+                name.textContent = file.name.length > 15 ? file.name.substring(0, 12) + '...' : file.name;
+                item.appendChild(name);
+            }
+
+            // Remove button
+            const removeBtn = document.createElement('button');
+            removeBtn.className = 'file-preview-remove';
+            removeBtn.innerHTML = '&times;';
+            removeBtn.setAttribute('aria-label', 'Eliminar archivo');
+            removeBtn.addEventListener('click', () => removePendingFile(i));
+            item.appendChild(removeBtn);
+
+            preview.appendChild(item);
+        }
+    }
+
+    /**
+     * Remove a file from the pending list
+     */
+    function removePendingFile(index) {
+        state.pendingFiles.splice(index, 1);
+        updateFilePreview();
+        updateSendButtonState();
+    }
+
+    /**
+     * Clear all pending files
+     */
+    function clearPendingFiles() {
+        state.pendingFiles = [];
+        updateFilePreview();
     }
 
     // ========================================
@@ -521,13 +763,48 @@
     // Keyboard Shortcuts
     // ========================================
     function handleKeyboard(e) {
-        // Escape to close modals
+        // Escape to close modals and lightbox
         if (e.key === 'Escape') {
             closeAllModals();
+            closeLightbox();
             if (state.isRecording) {
                 stopVoiceRecording();
             }
         }
+    }
+
+    // ========================================
+    // Lightbox
+    // ========================================
+    function initLightbox() {
+        if (elements.lightboxClose) {
+            elements.lightboxClose.addEventListener('click', closeLightbox);
+        }
+
+        if (elements.lightbox) {
+            elements.lightbox.addEventListener('click', (e) => {
+                // Close if clicking on backdrop (not the image)
+                if (e.target === elements.lightbox) {
+                    closeLightbox();
+                }
+            });
+        }
+    }
+
+    function openLightbox(imageUrl) {
+        if (!elements.lightbox || !elements.lightboxImg) return;
+
+        elements.lightboxImg.src = imageUrl;
+        elements.lightbox.classList.add('active');
+        document.body.style.overflow = 'hidden';
+    }
+
+    function closeLightbox() {
+        if (!elements.lightbox) return;
+
+        elements.lightbox.classList.remove('active');
+        elements.lightboxImg.src = '';
+        document.body.style.overflow = '';
     }
 
     // ========================================

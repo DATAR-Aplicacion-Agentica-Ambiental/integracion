@@ -1,0 +1,18 @@
+{
+  "permissions": {
+    "allow": [
+      "WebSearch",
+      "Bash(tree:*)",
+      "Bash(find:*)",
+      "Bash(git checkout:*)",
+      "WebFetch(domain:google.github.io)",
+      "WebFetch(domain:github.com)",
+      "WebFetch(domain:raw.githubusercontent.com)",
+      "Bash(cat:*)",
+      "Bash(git pull:*)",
+      "Bash(git add:*)"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}

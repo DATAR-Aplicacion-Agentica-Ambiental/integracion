@@ -8,6 +8,8 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <!-- Markdown parser -->
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
 </head>
 <body>
     <div class="app-container">
@@ -85,6 +87,9 @@
                     </svg>
                 </button>
             </div>
+
+            <!-- File Preview (before sending) -->
+            <div class="file-preview" id="file-preview" style="display: none;"></div>
 
             <!-- Text input -->
             <div class="input-container">
@@ -170,6 +175,12 @@
                 </button>
                 <p class="voice-status">Escuchando... Di algo</p>
             </div>
+        </div>
+
+        <!-- Image Lightbox -->
+        <div class="lightbox" id="lightbox">
+            <button class="lightbox-close" id="lightbox-close">&times;</button>
+            <img src="" alt="Imagen ampliada" id="lightbox-img">
         </div>
     </div>
 
