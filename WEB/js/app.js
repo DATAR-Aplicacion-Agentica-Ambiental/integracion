@@ -52,7 +52,12 @@
         authTokenInput: document.getElementById('auth-token-input'),
         btnSetToken: document.getElementById('btn-set-token'),
         btnClearToken: document.getElementById('btn-clear-token'),
-        btnCreateSession: document.getElementById('btn-create-session')
+        btnCreateSession: document.getElementById('btn-create-session'),
+
+        // Camera capture
+        cameraInput: document.getElementById('camera-input'),
+        videoInput: document.getElementById('video-input'),
+        btnCamera: document.getElementById('btn-camera')
     };
 
     // ========================================
@@ -146,6 +151,17 @@
 
         if (elements.fileInput) {
             elements.fileInput.addEventListener('change', handleFileSelect);
+        }
+
+        // Camera capture inputs
+        if (elements.cameraInput) {
+            elements.cameraInput.addEventListener('change', handleCameraCapture);
+        }
+        if (elements.videoInput) {
+            elements.videoInput.addEventListener('change', handleCameraCapture);
+        }
+        if (elements.btnCamera) {
+            elements.btnCamera.addEventListener('click', () => openCameraCapture('photo'));
         }
 
         // Modal backdrop click
@@ -953,11 +969,40 @@
                 openModal('upload');
                 break;
             case 'camera':
+                openCameraCapture('photo');
+                break;
             case 'video':
-                // TODO: Implement camera capture
-                alert('Función de cámara próximamente disponible');
+                openCameraCapture('video');
                 break;
         }
+    }
+
+    // ========================================
+    // Camera Capture
+    // ========================================
+    /**
+     * Open camera capture
+     * @param {string} type - 'photo' or 'video'
+     */
+    function openCameraCapture(type) {
+        if (type === 'video' && elements.videoInput) {
+            elements.videoInput.click();
+        } else if (elements.cameraInput) {
+            elements.cameraInput.click();
+        }
+    }
+
+    /**
+     * Handle camera capture result
+     * @param {Event} e - Change event from camera input
+     */
+    function handleCameraCapture(e) {
+        const files = e.target.files;
+        if (files && files.length > 0) {
+            processFiles(files);
+        }
+        // Reset input so same file can be captured again
+        e.target.value = '';
     }
 
     // ========================================
