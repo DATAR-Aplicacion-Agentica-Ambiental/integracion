@@ -427,19 +427,37 @@
         }
     }
 
+    // Mensajes genéricos de espera (neutrales, sin prometer funcionalidades)
+    const waitingMessages = [
+        'Procesando...',
+        'Un momento...',
+        'Analizando...',
+        'Preparando respuesta...',
+        'Consultando...',
+        'Trabajando...'
+    ];
+
+    let typingMessageInterval = null;
+
     function showTypingIndicator() {
         const id = 'typing-' + Date.now();
         const typingEl = document.createElement('div');
         typingEl.id = id;
         typingEl.className = 'message message-agent';
+
+        // Mensaje inicial aleatorio
+        const initialMessage = waitingMessages[Math.floor(Math.random() * waitingMessages.length)];
+
         typingEl.innerHTML = `
             <div class="message-content">
                 <div class="loading">
+                    <span class="loading-text">${initialMessage}</span>
                     <div class="loading-dots">
                         <span></span>
                         <span></span>
                         <span></span>
                     </div>
+                    <div class="loading-pulse"></div>
                 </div>
             </div>
         `;
@@ -452,10 +470,32 @@
         }
 
         scrollToBottom();
+
+        // Rotar mensajes cada 3 segundos
+        const textEl = typingEl.querySelector('.loading-text');
+        let messageIndex = waitingMessages.indexOf(initialMessage);
+
+        typingMessageInterval = setInterval(() => {
+            messageIndex = (messageIndex + 1) % waitingMessages.length;
+            if (textEl) {
+                textEl.style.opacity = '0';
+                setTimeout(() => {
+                    textEl.textContent = waitingMessages[messageIndex];
+                    textEl.style.opacity = '1';
+                }, 200);
+            }
+        }, 3000);
+
         return id;
     }
 
     function removeTypingIndicator(id) {
+        // Limpiar intervalo de rotación de mensajes
+        if (typingMessageInterval) {
+            clearInterval(typingMessageInterval);
+            typingMessageInterval = null;
+        }
+
         const el = document.getElementById(id);
         if (el) {
             el.remove();

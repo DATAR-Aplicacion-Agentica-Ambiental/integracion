@@ -554,8 +554,19 @@ body {
    ======================================== */
 .loading {
     display: flex;
-    align-items: center;
+    flex-direction: column;
+    align-items: flex-start;
     gap: var(--spacing-sm);
+    position: relative;
+    padding: var(--spacing-xs) 0;
+}
+
+/* Texto rotativo de espera */
+.loading-text {
+    font-size: 0.875rem;
+    color: var(--color-text-muted);
+    transition: opacity 200ms ease;
+    min-height: 1.25em;
 }
 
 .loading-dots {
@@ -583,6 +594,57 @@ body {
     40% {
         transform: scale(1);
         opacity: 1;
+    }
+}
+
+/* Animación de pulso */
+.loading-pulse {
+    position: absolute;
+    bottom: -4px;
+    left: 0;
+    width: 100%;
+    height: 2px;
+    background: linear-gradient(
+        90deg,
+        transparent,
+        var(--color-primary-light),
+        var(--color-primary),
+        var(--color-primary-light),
+        transparent
+    );
+    background-size: 200% 100%;
+    animation: loadingPulse 2s ease-in-out infinite;
+    border-radius: 1px;
+    opacity: 0.7;
+}
+
+@keyframes loadingPulse {
+    0% {
+        background-position: 200% 0;
+    }
+    100% {
+        background-position: -200% 0;
+    }
+}
+
+/* Variante: shimmer effect para mensajes de espera */
+.loading-shimmer {
+    background: linear-gradient(
+        90deg,
+        var(--color-bg-glass) 0%,
+        var(--color-bg-glass-light) 50%,
+        var(--color-bg-glass) 100%
+    );
+    background-size: 200% 100%;
+    animation: shimmer 1.5s ease-in-out infinite;
+}
+
+@keyframes shimmer {
+    0% {
+        background-position: 200% 0;
+    }
+    100% {
+        background-position: -200% 0;
     }
 }
 

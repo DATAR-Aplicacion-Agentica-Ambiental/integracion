@@ -144,7 +144,117 @@ curl funciona correctamente (no aplica CORS)
 
 ---
 
-## 6. Recomendación: Modelo Multimodal
+## 6. Limitaciones de Visibilidad del Proceso Interno (Thinking)
+
+### 6.1 ¿Qué es el "Thinking" de un modelo?
+
+Algunos modelos de lenguaje (LLMs) tienen la capacidad de exponer su "proceso de pensamiento" interno antes de generar una respuesta final. Esto incluye:
+
+- **Razonamiento intermedio**: Los pasos lógicos que el modelo sigue para llegar a una conclusión
+- **Auto-corrección**: Cuando el modelo detecta un error en su razonamiento y lo corrige
+- **Exploración de opciones**: Cuando el modelo considera múltiples enfoques antes de elegir uno
+
+**Ejemplo de un modelo con thinking expuesto (Claude con Extended Thinking):**
+```
+<thinking>
+El usuario pregunta sobre el clima. Debo verificar si tengo acceso a datos meteorológicos...
+No tengo acceso en tiempo real, pero puedo explicar cómo funcionan los patrones climáticos...
+</thinking>
+
+El clima en Bogotá generalmente presenta lluvias en abril debido a...
+```
+
+### 6.2 ¿Por qué DATAR no muestra el "thinking"?
+
+Existen **tres limitaciones arquitectónicas** que impiden mostrar el proceso de pensamiento en tiempo real:
+
+#### Limitación 1: El modelo no expone thinking
+
+El modelo actual (`minimax/minimax-m2` via OpenRouter) **no tiene funcionalidad de thinking expuesto**. A diferencia de Claude (Anthropic) que ofrece "Extended Thinking", el modelo minimax devuelve únicamente la respuesta final sin exponer su razonamiento interno.
+
+**Modelos que SÍ exponen thinking:**
+| Modelo | Funcionalidad | Proveedor |
+|--------|---------------|-----------|
+| `claude-3-opus`, `claude-3.5-sonnet` | Extended Thinking (beta) | Anthropic |
+| `o1-preview`, `o1-mini` | Chain-of-thought visible | OpenAI |
+
+**Modelos que NO exponen thinking:**
+| Modelo | Observación |
+|--------|-------------|
+| `minimax-m2` | Solo respuesta final |
+| `gemini-*` | Solo respuesta final |
+| `gpt-4o`, `gpt-4o-mini` | Solo respuesta final |
+
+#### Limitación 2: La API no soporta streaming
+
+La API de Google ADK actualmente opera en modo **request-response**, es decir:
+
+1. El cliente envía una solicitud completa
+2. El servidor procesa toda la solicitud
+3. El servidor devuelve una respuesta completa
+
+```
+Cliente ──[request]──> Servidor
+        (espera 5-30 segundos)
+Cliente <──[response]── Servidor
+```
+
+Para mostrar el "thinking" en tiempo real, se requeriría **streaming** mediante:
+
+- **Server-Sent Events (SSE)**: El servidor envía chunks de texto progresivamente
+- **WebSockets**: Conexión bidireccional persistente
+
+```
+Cliente ──[request]──> Servidor
+Cliente <──[chunk 1: "Pensando..."]── Servidor
+Cliente <──[chunk 2: "Analizando emojis..."]── Servidor
+Cliente <──[chunk 3: "Respuesta final"]── Servidor
+```
+
+**Implementación requerida en el backend:**
+```python
+# Ejemplo con FastAPI + SSE
+from fastapi.responses import StreamingResponse
+
+@app.post("/run-stream")
+async def run_stream(request: RunRequest):
+    async def generate():
+        yield "data: Procesando...\n\n"
+        # ... llamada al modelo ...
+        yield f"data: {response}\n\n"
+
+    return StreamingResponse(generate(), media_type="text/event-stream")
+```
+
+#### Limitación 3: ADK no expone callbacks intermedios
+
+Google ADK tiene callbacks como `before_model_callback` y `after_model_callback`, pero estos se ejecutan en el servidor y **no transmiten información al cliente** durante la ejecución. No existe un mecanismo nativo para enviar actualizaciones de progreso al frontend.
+
+### 6.3 ¿Qué puede hacer el frontend mientras tanto?
+
+Sin cambios en el backend, el frontend solo puede mostrar **indicadores de espera genéricos**:
+
+| Enfoque | Descripción | Implementado |
+|---------|-------------|--------------|
+| Puntos suspensivos animados | `...` con animación CSS | ✅ Sí |
+| Mensajes rotativos genéricos | "Procesando...", "Un momento..." | ✅ Sí |
+| Animaciones visuales | Ondas, pulsos, gradientes | ✅ Sí |
+
+**Importante:** Los mensajes deben ser neutrales y no prometer funcionalidades específicas, ya que no sabemos qué agente responderá ni qué tipo de contenido generará.
+
+### 6.4 Recomendaciones para el Backend (Futuro)
+
+Si se desea mostrar progreso real en el futuro, el backend debería:
+
+1. **Implementar streaming SSE** en el endpoint `/run`
+2. **Capturar eventos de delegación** entre agentes y transmitirlos
+3. **Considerar un modelo con thinking** (como Claude) para agentes que requieran explicar su razonamiento
+
+**Prioridad:** Baja. Los indicadores genéricos son suficientes para la experiencia de usuario actual.
+
+---
+
+## 7. Recomendación: Modelo Multimodal
 
 ### Problema
 El modelo actual (`minimax/minimax-m2`) es **solo texto**. No puede:
@@ -179,7 +289,7 @@ intuitiva_agent = Agent(
 
 ---
 
-## 7. Estado del Frontend
+## 8. Estado del Frontend
 
 El frontend web está **100% funcional** para todas las capacidades que el backend actualmente soporta:
 
@@ -204,7 +314,7 @@ El frontend web está **100% funcional** para todas las capacidades que el backe
 
 ---
 
-## 8. Conclusión
+## 9. Conclusión
 
 El frontend cumple con todos los requisitos y está preparado para producción. Las limitaciones actuales son exclusivamente del backend:
 

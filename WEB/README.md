@@ -40,6 +40,9 @@ gcloud auth login
 # Generar token de identidad (dura 1 hora)
 TOKEN=$(gcloud auth print-identity-token)
 echo $TOKEN
+
+# Volver a visualizar el token:
+gcloud auth print-identity-token
 ```
 
 Luego en el frontend:
@@ -120,5 +123,3 @@ gcloud run deploy datar-frontend \
 3. **CORS**: Debe habilitarse en el backend para producción
 
 Ver `INFORME_PRUEBAS_API.md` para detalles completos.
-
-
