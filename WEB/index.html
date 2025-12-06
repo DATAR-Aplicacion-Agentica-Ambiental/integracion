@@ -166,11 +166,9 @@
                 <div class="voice-animation">
                     <canvas id="voice-canvas"></canvas>
                 </div>
-                <button class="voice-btn" id="voice-stop">
+                <button class="voice-btn" id="voice-stop" aria-label="Terminar grabación">
                     <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/>
-                        <path d="M19 10v2a7 7 0 0 1-14 0v-2"/>
-                        <line x1="12" y1="19" x2="12" y2="23"/>
+                        <polyline points="20 6 9 17 4 12"/>
                     </svg>
                 </button>
                 <p class="voice-status">Escuchando... Di algo</p>
@@ -181,6 +179,28 @@
         <div class="lightbox" id="lightbox">
             <button class="lightbox-close" id="lightbox-close">&times;</button>
             <img src="" alt="Imagen ampliada" id="lightbox-img">
+        </div>
+    </div>
+
+    <!-- Dev Panel (only visible in dev mode) -->
+    <div class="dev-panel" id="dev-panel" style="display: none;">
+        <button class="dev-toggle" id="dev-toggle" aria-label="Configuración">⚙</button>
+        <div class="dev-content" id="dev-content">
+            <h3>Configuración API</h3>
+            <div class="dev-status" id="dev-status">
+                <span class="status-dot"></span>
+                <span class="status-text">Sin token</span>
+            </div>
+            <div class="dev-field">
+                <label for="auth-token-input">Token de autenticación:</label>
+                <textarea id="auth-token-input" placeholder="Pega aquí el token de gcloud..."></textarea>
+            </div>
+            <div class="dev-actions">
+                <button id="btn-set-token" class="dev-btn primary">Guardar Token</button>
+                <button id="btn-clear-token" class="dev-btn">Limpiar</button>
+                <button id="btn-create-session" class="dev-btn">Nueva Sesión</button>
+            </div>
+            <p class="dev-hint">Token: <code>gcloud auth print-identity-token --impersonate-service-account=SA_EMAIL</code></p>
         </div>
     </div>
 

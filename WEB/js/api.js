@@ -10,16 +10,27 @@ const DatarAPI = (function() {
     const CONFIG = {
         // Production URL (Cloud Run)
         baseUrl: 'https://datar-integraciones-dd3vrcpotq-rj.a.run.app',
-        // Local development URL
-        localUrl: 'http://localhost:8000',
+        // Local proxy URL (bypasses CORS during development)
+        proxyUrl: '/api',
         appName: 'datar_integraciones',
+
+        // =============================================
+        // PRODUCTION SETTINGS (change for deployment)
+        // =============================================
         // Set to true to use mock data (when API is not available)
-        useMock: true
+        useMock: false,
+        // Set to true to show dev tools (token input panel)
+        // IMPORTANT: Set to false for production deployment
+        devMode: true,
+        // Set to true when running locally with proxy.py
+        // IMPORTANT: Set to false for production (requires CORS enabled on backend)
+        useProxy: true
     };
 
     // State
     let currentUserId = null;
     let currentSessionId = null;
+    let authToken = null;
 
     /**
      * Initialize API client with user and session IDs
@@ -27,8 +38,88 @@ const DatarAPI = (function() {
     function init(userId, sessionId) {
         currentUserId = userId || generateId('user');
         currentSessionId = sessionId || generateId('session');
-        console.log('[DatarAPI] Initialized:', { userId: currentUserId, sessionId: currentSessionId });
+
+        // Try to load saved auth token from localStorage
+        const savedToken = localStorage.getItem('datar_auth_token');
+        if (savedToken) {
+            authToken = savedToken;
+            console.log('[DatarAPI] Auth token loaded from storage');
+        }
+
+        console.log('[DatarAPI] Initialized:', {
+            userId: currentUserId,
+            sessionId: currentSessionId,
+            hasToken: !!authToken,
+            useMock: CONFIG.useMock
+        });
+
         return { userId: currentUserId, sessionId: currentSessionId };
+    }
+
+    /**
+     * Set the authentication token
+     * @param {string} token - Bearer token for Cloud Run authentication
+     */
+    function setAuthToken(token) {
+        authToken = token;
+        if (token) {
+            localStorage.setItem('datar_auth_token', token);
+            console.log('[DatarAPI] Auth token set and saved');
+        } else {
+            localStorage.removeItem('datar_auth_token');
+            console.log('[DatarAPI] Auth token cleared');
+        }
+    }
+
+    /**
+     * Get current auth token status
+     */
+    function hasAuthToken() {
+        return !!authToken;
+    }
+
+    /**
+     * Create a new session on the server
+     */
+    async function createSession() {
+        if (CONFIG.useMock) {
+            console.log('[DatarAPI] Mock mode - session creation skipped');
+            return { id: currentSessionId, userId: currentUserId };
+        }
+
+        const url = `${getBaseUrl()}/apps/${CONFIG.appName}/users/${currentUserId}/sessions`;
+
+        const headers = {
+            'Content-Type': 'application/json'
+        };
+
+        if (authToken) {
+            headers['Authorization'] = `Bearer ${authToken}`;
+        }
+
+        try {
+            const response = await fetch(url, {
+                method: 'POST',
+                headers,
+                body: JSON.stringify({ session_id: currentSessionId })
+            });
+
+            if (!response.ok) {
+                const errorData = await response.json().catch(() => ({}));
+                throw new ApiError(
+                    `Session creation failed: ${response.status}`,
+                    response.status,
+                    errorData
+                );
+            }
+
+            const data = await response.json();
+            console.log('[DatarAPI] Session created:', data);
+            return data;
+        } catch (error) {
+            if (error instanceof ApiError) throw error;
+            throw new ApiError(`Network Error: ${error.message}`, 0, null);
+        }
     }
 
     /**
@@ -42,10 +133,11 @@ const DatarAPI = (function() {
      * Get the base URL based on environment
      */
     function getBaseUrl() {
-        // Check if running locally
-        if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
-            return CONFIG.localUrl;
+        // Use local proxy to bypass CORS (when running locally with proxy.py)
+        if (CONFIG.useProxy && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')) {
+            return CONFIG.proxyUrl;
         }
+        // Direct connection to production (when deployed or CORS is enabled)
         return CONFIG.baseUrl;
     }
 
@@ -131,24 +223,25 @@ const DatarAPI = (function() {
      * Send a message to the agent (non-streaming)
      * @param {string} message - User message
      * @param {File[]} files - Optional files to send
-     * @param {string} [authToken] - Optional auth token for Cloud Run
      * @returns {Promise<Array>} - Array of event objects
      */
-    async function sendMessage(message, files = [], authToken = null) {
+    async function sendMessage(message, files = []) {
         if (CONFIG.useMock) {
             return mockSendMessage(message, files);
+        }
+
+        // Check for auth token
+        if (!authToken) {
+            throw new ApiError('No auth token set. Use DatarAPI.setAuthToken() first.', 401, null);
         }
 
         const url = `${getBaseUrl()}/run`;
         const body = await buildRequestBody(message, files);
 
         const headers = {
-            'Content-Type': 'application/json'
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${authToken}`
         };
-
-        if (authToken) {
-            headers['Authorization'] = `Bearer ${authToken}`;
-        }
 
         try {
             const response = await fetch(url, {
@@ -159,6 +252,16 @@ const DatarAPI = (function() {
 
             if (!response.ok) {
                 const errorData = await response.json().catch(() => ({}));
+
+                // Handle auth errors specially
+                if (response.status === 401 || response.status === 403) {
+                    throw new ApiError(
+                        'Token de autenticación inválido o expirado. Por favor, actualiza el token.',
+                        response.status,
+                        errorData
+                    );
+                }
+
                 throw new ApiError(
                     `API Error: ${response.status}`,
                     response.status,
@@ -180,11 +283,16 @@ const DatarAPI = (function() {
      * @param {function} onEvent - Callback for each event
      * @param {function} onError - Callback for errors
      * @param {function} onComplete - Callback when stream ends
-     * @param {string} [authToken] - Optional auth token
      */
-    async function sendMessageStream(message, files = [], onEvent, onError, onComplete, authToken = null) {
+    async function sendMessageStream(message, files = [], onEvent, onError, onComplete) {
         if (CONFIG.useMock) {
             return mockSendMessageStream(message, onEvent, onComplete);
+        }
+
+        // Check for auth token
+        if (!authToken) {
+            onError(new ApiError('No auth token set. Use DatarAPI.setAuthToken() first.', 401, null));
+            return;
         }
 
         const url = `${getBaseUrl()}/run_sse`;
@@ -192,12 +300,9 @@ const DatarAPI = (function() {
         body.streaming = true;
 
         const headers = {
-            'Content-Type': 'application/json'
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${authToken}`
         };
-
-        if (authToken) {
-            headers['Authorization'] = `Bearer ${authToken}`;
-        }
 
         try {
             const response = await fetch(url, {
@@ -409,6 +514,7 @@ const DatarAPI = (function() {
 
     return {
         init,
+        createSession,
         sendMessage,
         sendMessageStream,
         extractTextFromEvent,
@@ -418,6 +524,8 @@ const DatarAPI = (function() {
         getFileMimeType,
         getConfig: () => ({ ...CONFIG }),
         setMockMode: (enabled) => { CONFIG.useMock = enabled; },
+        setAuthToken,
+        hasAuthToken,
         getUserId: () => currentUserId,
         getSessionId: () => currentSessionId,
         ApiError

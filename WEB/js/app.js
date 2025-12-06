@@ -42,7 +42,17 @@
         // Lightbox
         lightbox: document.getElementById('lightbox'),
         lightboxImg: document.getElementById('lightbox-img'),
-        lightboxClose: document.getElementById('lightbox-close')
+        lightboxClose: document.getElementById('lightbox-close'),
+
+        // Dev Panel
+        devPanel: document.getElementById('dev-panel'),
+        devToggle: document.getElementById('dev-toggle'),
+        devContent: document.getElementById('dev-content'),
+        devStatus: document.getElementById('dev-status'),
+        authTokenInput: document.getElementById('auth-token-input'),
+        btnSetToken: document.getElementById('btn-set-token'),
+        btnClearToken: document.getElementById('btn-clear-token'),
+        btnCreateSession: document.getElementById('btn-create-session')
     };
 
     // ========================================
@@ -81,6 +91,9 @@
 
         // Initialize lightbox
         initLightbox();
+
+        // Initialize dev panel
+        initDevPanel();
 
         // Focus input
         elements.messageInput.focus();
@@ -269,6 +282,8 @@
             // Use marked.js to parse Markdown
             if (typeof marked !== 'undefined') {
                 textContainer.innerHTML = marked.parse(content.text);
+                // Post-process to convert media URLs to players
+                processMediaUrls(textContainer);
             } else {
                 textContainer.textContent = content.text;
             }
@@ -308,7 +323,7 @@
 
         messageEl.appendChild(contentEl);
 
-        // Add play button for text-to-speech
+        // Add play/pause button for text-to-speech
         if (content.text) {
             const actionBtn = document.createElement('button');
             actionBtn.className = 'message-action';
@@ -318,7 +333,9 @@
                     <path d="M3 22v-20l18 10-18 10z"/>
                 </svg>
             `;
-            actionBtn.addEventListener('click', () => speakText(content.text));
+            // Strip HTML/Markdown for cleaner TTS
+            const plainText = content.text.replace(/[#*_`\[\]()]/g, '').trim();
+            actionBtn.addEventListener('click', () => toggleSpeech(plainText, actionBtn));
             messageEl.appendChild(actionBtn);
         }
 
@@ -346,6 +363,57 @@
             elements.chatMessages.appendChild(messageEl);
         }
         scrollToBottom();
+    }
+
+    /**
+     * Process media URLs in rendered markdown
+     * Converts links to audio/image files into inline players/images
+     */
+    function processMediaUrls(container) {
+        // Audio extensions
+        const audioExtensions = /\.(wav|mp3|ogg|m4a|webm|flac)$/i;
+        // Image extensions
+        const imageExtensions = /\.(jpg|jpeg|png|gif|webp|svg)$/i;
+
+        // Find all links in the container
+        const links = container.querySelectorAll('a[href]');
+
+        links.forEach(link => {
+            const href = link.href;
+
+            // Check if it's an audio file
+            if (audioExtensions.test(href)) {
+                const audioWrapper = document.createElement('div');
+                audioWrapper.className = 'message-audio inline-audio';
+
+                const audio = document.createElement('audio');
+                audio.controls = true;
+                audio.src = href;
+                audio.preload = 'metadata';
+
+                // Keep the link text as a label
+                const label = document.createElement('span');
+                label.className = 'audio-label';
+                label.textContent = link.textContent || 'Audio';
+
+                audioWrapper.appendChild(label);
+                audioWrapper.appendChild(audio);
+
+                // Replace the link with the audio player
+                link.parentNode.replaceChild(audioWrapper, link);
+            }
+            // Check if it's an image file (and not already an img tag)
+            else if (imageExtensions.test(href) && !link.querySelector('img')) {
+                const img = document.createElement('img');
+                img.className = 'message-image inline-image';
+                img.src = href;
+                img.alt = link.textContent || 'Imagen';
+                img.addEventListener('click', () => openLightbox(href));
+
+                // Replace the link with the image
+                link.parentNode.replaceChild(img, link);
+            }
+        });
     }
 
     /**
@@ -725,21 +793,114 @@
     // ========================================
     // Text-to-Speech
     // ========================================
-    function speakText(text) {
+    let currentUtterance = null;
+    let isSpeaking = false;
+
+    // Pre-cargar voces (Chrome las carga async)
+    if ('speechSynthesis' in window) {
+        speechSynthesis.getVoices();
+        speechSynthesis.onvoiceschanged = () => speechSynthesis.getVoices();
+    }
+
+    /**
+     * Toggle speech: play, pause, or resume
+     * @param {string} text - Text to speak
+     * @param {HTMLElement} button - The button element to update icon
+     */
+    function toggleSpeech(text, button) {
         if (!('speechSynthesis' in window)) {
             console.warn('[App] Text-to-speech not supported');
             return;
         }
 
-        // Cancel any ongoing speech
-        window.speechSynthesis.cancel();
+        const synth = window.speechSynthesis;
 
+        // If currently speaking this text, pause it
+        if (isSpeaking && synth.speaking) {
+            if (synth.paused) {
+                synth.resume();
+                updateSpeechButton(button, 'speaking');
+            } else {
+                synth.pause();
+                updateSpeechButton(button, 'paused');
+            }
+            return;
+        }
+
+        // Cancel any previous speech and start new
+        synth.cancel();
+
+        currentUtterance = new SpeechSynthesisUtterance(text);
+        currentUtterance.lang = 'es-ES';
+        currentUtterance.rate = 1.1;  // Más rápido
+        currentUtterance.pitch = 1;
+
+        // Usar voz por defecto del sistema (más rápida de cargar)
+        const voices = synth.getVoices();
+        const spanishVoice = voices.find(v => v.lang.startsWith('es')) || voices[0];
+        if (spanishVoice) {
+            currentUtterance.voice = spanishVoice;
+        }
+
+        currentUtterance.onstart = () => {
+            isSpeaking = true;
+            updateSpeechButton(button, 'speaking');
+        };
+
+        currentUtterance.onend = () => {
+            isSpeaking = false;
+            updateSpeechButton(button, 'idle');
+        };
+
+        currentUtterance.onerror = () => {
+            isSpeaking = false;
+            updateSpeechButton(button, 'idle');
+        };
+
+        synth.speak(currentUtterance);
+    }
+
+    /**
+     * Update speech button icon based on state
+     */
+    function updateSpeechButton(button, state) {
+        if (!button) return;
+
+        const icons = {
+            idle: `<svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M3 22v-20l18 10-18 10z"/>
+            </svg>`,
+            speaking: `<svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+                <rect x="6" y="4" width="4" height="16"/>
+                <rect x="14" y="4" width="4" height="16"/>
+            </svg>`,
+            paused: `<svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M3 22v-20l18 10-18 10z"/>
+            </svg>`
+        };
+
+        button.innerHTML = icons[state] || icons.idle;
+        button.setAttribute('aria-label', state === 'speaking' ? 'Pausar' : 'Reproducir');
+    }
+
+    /**
+     * Legacy speakText function for backward compatibility
+     */
+    function speakText(text) {
+        if (!('speechSynthesis' in window)) {
+            console.warn('[App] Text-to-speech not supported');
+            return;
+        }
+        const synth = window.speechSynthesis;
+        synth.cancel();
         const utterance = new SpeechSynthesisUtterance(text);
         utterance.lang = 'es-ES';
-        utterance.rate = 0.9;
+        utterance.rate = 1.1;
         utterance.pitch = 1;
-
-        window.speechSynthesis.speak(utterance);
+        const voices = synth.getVoices();
+        const spanishVoice = voices.find(v => v.lang.startsWith('es')) || voices[0];
+        if (spanishVoice) utterance.voice = spanishVoice;
+        synth.speak(utterance);
     }
 
     // ========================================
@@ -805,6 +966,102 @@
         elements.lightbox.classList.remove('active');
         elements.lightboxImg.src = '';
         document.body.style.overflow = '';
+    }
+
+    // ========================================
+    // Dev Panel
+    // ========================================
+    function initDevPanel() {
+        const config = DatarAPI.getConfig();
+
+        // Only show dev panel in dev mode
+        if (!config.devMode || !elements.devPanel) {
+            return;
+        }
+
+        elements.devPanel.style.display = 'block';
+
+        // Toggle panel
+        if (elements.devToggle) {
+            elements.devToggle.addEventListener('click', () => {
+                elements.devPanel.classList.toggle('open');
+            });
+        }
+
+        // Set token button
+        if (elements.btnSetToken) {
+            elements.btnSetToken.addEventListener('click', handleSetToken);
+        }
+
+        // Clear token button
+        if (elements.btnClearToken) {
+            elements.btnClearToken.addEventListener('click', handleClearToken);
+        }
+
+        // Create session button
+        if (elements.btnCreateSession) {
+            elements.btnCreateSession.addEventListener('click', handleCreateSession);
+        }
+
+        // Update initial status
+        updateDevStatus();
+    }
+
+    function updateDevStatus() {
+        if (!elements.devStatus) return;
+
+        const hasToken = DatarAPI.hasAuthToken();
+        const config = DatarAPI.getConfig();
+
+        const statusText = elements.devStatus.querySelector('.status-text');
+
+        if (hasToken) {
+            elements.devStatus.classList.add('connected');
+            statusText.textContent = config.useMock ? 'Token OK (Mock activo)' : 'Token configurado';
+        } else {
+            elements.devStatus.classList.remove('connected');
+            statusText.textContent = config.useMock ? 'Mock activo' : 'Sin token';
+        }
+    }
+
+    async function handleSetToken() {
+        const token = elements.authTokenInput?.value.trim();
+
+        if (!token) {
+            alert('Por favor, ingresa un token válido');
+            return;
+        }
+
+        DatarAPI.setAuthToken(token);
+        elements.authTokenInput.value = '';
+        updateDevStatus();
+
+        // Try to create a session
+        await handleCreateSession();
+    }
+
+    function handleClearToken() {
+        DatarAPI.setAuthToken(null);
+        updateDevStatus();
+    }
+
+    async function handleCreateSession() {
+        try {
+            const result = await DatarAPI.createSession();
+            console.log('[App] Session created:', result);
+            addAgentMessage({
+                text: `Sesión creada: **${result.id}**\n\nUsuario: \`${DatarAPI.getUserId()}\``,
+                images: [],
+                audio: []
+            }, 'Sistema');
+        } catch (error) {
+            console.error('[App] Failed to create session:', error);
+            addAgentMessage({
+                text: `Error al crear sesión: ${error.message}`,
+                images: [],
+                audio: []
+            }, 'Sistema');
+        }
     }
 
     // ========================================
