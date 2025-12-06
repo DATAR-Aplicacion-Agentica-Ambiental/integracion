@@ -21,23 +21,31 @@ WEB/
 
 ## Desarrollo Local
 
-### Opción 1: Con Proxy (recomendado para desarrollo)
+### Con Proxy (recomendado)
 
 ```bash
-cd WEB/dev
-python3 proxy.py
+cd WEB
+python3 dev/proxy.py
 # Abre http://localhost:8080
 ```
 
 El proxy redirige `/api/*` a Cloud Run con headers CORS.
 
-### Opción 2: Servidor Simple (solo modo mock)
+### Generar Token para Pruebas
 
 ```bash
-cd WEB
-python3 -m http.server 8080
-# Edita js/api.js: useMock: true
+# Autenticarse con tu cuenta de Google
+gcloud auth login
+
+# Generar token de identidad (dura 1 hora)
+TOKEN=$(gcloud auth print-identity-token)
+echo $TOKEN
 ```
+
+Luego en el frontend:
+1. Clic en ⚙ (esquina superior derecha)
+2. Pegar el token
+3. Clic "Guardar Token"
 
 ## Configuración (js/api.js)
 
@@ -45,7 +53,7 @@ python3 -m http.server 8080
 const CONFIG = {
     useMock: false,    // true = datos de prueba, false = API real
     devMode: true,     // true = muestra panel de token, false = oculto
-    useProxy: true     // true = usa /api (local), false = conexión directa
+    useProxy: true     // true = usa proxy local, false = conexión directa
 };
 ```
 
@@ -56,11 +64,11 @@ devMode: false,
 useProxy: false
 ```
 
-## Despliegue a Producción
+## Despliegue en Cloud Run
 
 ### Prerrequisito: CORS en el Backend
 
-Antes de desplegar, el backend debe habilitar CORS. Agregar en el servidor FastAPI:
+El backend debe habilitar CORS. Agregar en el servidor FastAPI:
 
 ```python
 from fastapi.middleware.cors import CORSMiddleware
@@ -73,69 +81,9 @@ app.add_middleware(
 )
 ```
 
-### Opción A: Firebase Hosting (Recomendado)
+### Despliegue
 
-1. Instalar Firebase CLI:
-```bash
-npm install -g firebase-tools
-firebase login
-```
-
-2. Inicializar proyecto:
-```bash
-firebase init hosting
-# Seleccionar directorio: WEB
-# SPA: No
-```
-
-3. Configurar `firebase.json` para proxy (opcional):
-```json
-{
-  "hosting": {
-    "public": "WEB",
-    "rewrites": [
-      {
-        "source": "/api/**",
-        "run": {
-          "serviceId": "datar-integraciones",
-          "region": "southamerica-east1"
-        }
-      }
-    ]
-  }
-}
-```
-
-4. Desplegar:
-```bash
-firebase deploy --only hosting
-```
-
-### Opción B: Cloud Storage + CDN
-
-1. Crear bucket:
-```bash
-gsutil mb -l southamerica-east1 gs://datar-frontend
-```
-
-2. Configurar como sitio web:
-```bash
-gsutil web set -m index.html gs://datar-frontend
-```
-
-3. Subir archivos:
-```bash
-gsutil -m cp -r WEB/* gs://datar-frontend/
-```
-
-4. Hacer público:
-```bash
-gsutil iam ch allUsers:objectViewer gs://datar-frontend
-```
-
-### Opción C: Cloud Run (Contenedor)
-
-1. Crear `Dockerfile`:
+1. Crear `Dockerfile` en la raíz del proyecto:
 ```dockerfile
 FROM nginx:alpine
 COPY WEB/ /usr/share/nginx/html/
@@ -145,8 +93,12 @@ CMD ["nginx", "-g", "daemon off;"]
 
 2. Construir y desplegar:
 ```bash
-gcloud builds submit --tag gcr.io/PROJECT_ID/datar-frontend
-gcloud run deploy datar-frontend --image gcr.io/PROJECT_ID/datar-frontend --platform managed
+gcloud builds submit --tag gcr.io/datar-476419/datar-frontend
+gcloud run deploy datar-frontend \
+  --image gcr.io/datar-476419/datar-frontend \
+  --platform managed \
+  --region southamerica-east1 \
+  --allow-unauthenticated
 ```
 
 ## Funcionalidades
@@ -160,8 +112,6 @@ gcloud run deploy datar-frontend --image gcr.io/PROJECT_ID/datar-frontend --plat
 | Text-to-Speech | ✅ | Lectura de respuestas con play/pausa |
 | Speech-to-Text | ✅ | Entrada por voz (Web Speech API) |
 | Responsive | ✅ | Diseño mobile-first |
-| Lightbox | ✅ | Ampliación de imágenes |
-| File Preview | ✅ | Vista previa antes de enviar |
 
 ## Limitaciones Conocidas (Backend)
 
@@ -171,11 +121,4 @@ gcloud run deploy datar-frontend --image gcr.io/PROJECT_ID/datar-frontend --plat
 
 Ver `INFORME_PRUEBAS_API.md` para detalles completos.
 
-## Compatibilidad de Navegadores
 
-- Chrome 80+ ✅
-- Firefox 75+ ✅
-- Safari 13+ ✅
-- Edge 80+ ✅
-
-Speech-to-Text requiere Chrome, Edge o Safari.
